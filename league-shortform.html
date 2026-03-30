@@ -323,7 +323,7 @@
                 async requestJoin() {
                     this.joinStatus = 'Requesting';
                     const { error } = await _supabase.from('league_members').insert([{
-                        user_id: this.user.id,
+                        id: this.user.id,
                         league_id: this.leagueId,
                         team_name: this.userData.team_name,
                         logo_url: this.userData.logo_url,
