@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0f1a">
+    <title>DLS26 | Registry Protocol</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        [x-cloak] { display: none !important; }
+
+        .glass-card { 
+            background: linear-gradient(160deg, #111827 0%, #0d1321 100%); 
+            border: 1px solid rgba(0, 255, 133, 0.15);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #00ff85;
+            background: rgba(0, 255, 133, 0.05);
+            outline: none;
+        }
+
+        .glow-button {
+            background: #00ff85;
+            color: #0a0f1a;
+            box-shadow: 0 0 20px rgba(0, 255, 133, 0.2);
+        }
+    </style>
+</head>
+<body x-data="signupApp()" class="min-h-full flex items-center justify-center p-6 py-12">
+
+    <div class="w-full max-w-md relative z-10">
+        <div class="text-center mb-8">
+            <h1 class="outfit text-4xl font-[900] tracking-tighter uppercase">DLS<span class="text-[#00ff85]">26</span></h1>
+            <p class="text-[#00ff85] text-[10px] font-black tracking-[0.4em] uppercase opacity-60">New Registry Entry</p>
+        </div>
+
+        <div class="glass-card rounded-[2.5rem] p-8 relative overflow-hidden">
+            <form @submit.prevent="register" class="space-y-5">
+                <div>
+                    <label class="block text-[9px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Assigned Team Name</label>
+                    <input type="text" x-model="formData.teamName" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="e.g. Madrid FC">
+                </div>
+
+                <div>
+                    <label class="block text-[9px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Terminal ID (Email)</label>
+                    <input type="email" x-model="formData.email" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="commander@dls.com">
+                </div>
+
+                <div>
+                    <label class="block text-[9px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Contact Sync (Phone)</label>
+                    <input type="tel" x-model="formData.phone" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="+254...">
+                </div>
+
+                <div>
+                    <label class="block text-[9px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Access Key</label>
+                    <input type="password" x-model="formData.password" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="Create Secure Key">
+                </div>
+
+                <div x-show="error" x-text="error" 
+                     class="text-red-400 text-[10px] font-bold uppercase text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20" x-cloak>
+                </div>
+
+                <button type="submit" :disabled="loading"
+                        class="glow-button w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-widest text-sm flex items-center justify-center">
+                    <span x-show="!loading">AUTHORIZE ACCOUNT</span>
+                    <svg x-show="loading" class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="mt-8 text-center">
+                <a href="signin.html" class="text-white/30 text-[10px] font-bold uppercase tracking-widest hover:text-[#00ff85]">
+                    Existing Member? <span class="text-[#00ff85]">Bypass to Login</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+        function signupApp() {
+            return {
+                formData: { teamName: '', email: '', phone: '', password: '' },
+                loading: false,
+                error: '',
+
+                async register() {
+                    this.loading = true;
+                    this.error = '';
+
+                    try {
+                        // 1. Create the Auth User
+                        const { data: authData, error: authError } = await _supabase.auth.signUp({
+                            email: this.formData.email,
+                            password: this.formData.password
+                        });
+
+                        if (authError) throw authError;
+
+                        // 2. Insert into userinfo table (Important for Profile tab!)
+                        if (authData.user) {
+                            const { error: dbError } = await _supabase
+                                .from('userinfo')
+                                .insert([{
+                                    id: authData.user.id,
+                                    email: this.formData.email,
+                                    team_name: this.formData.teamName,
+                                    phone: this.formData.phone,
+                                    logo_url: 'https://via.placeholder.com/150/0a0f1a/00ff85?text=' + encodeURIComponent(this.formData.teamName)
+                                }]);
+
+                            if (dbError) throw dbError;
+                            
+                            alert("Registry Successful. Check your email for verification link!");
+                            window.location.href = 'signin.html';
+                        }
+                    } catch (err) {
+                        this.error = err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+                      </html>
+
