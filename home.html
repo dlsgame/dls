@@ -114,7 +114,7 @@
 
     <main class="max-w-4xl mx-auto p-6" x-show="!loading">
         <div class="mb-10">
-            <h1 class="outfit font-[900] text-3xl uppercase tracking-tighter italic">Operational <span class="text-[#00ff85]">Sectors</span></h1>
+            <h1 class="outfit font-[900] text-3xl uppercase tracking-tighter italc">Operational <span class="text-[#00ff85]">Sectors</span></h1>
             <p class="text-white/30 text-[10px] font-black uppercase tracking-[.3em] mt-2">Central Registry Feed</p>
         </div>
 
@@ -134,7 +134,7 @@
                         </div>
 
                         <h2 class="outfit font-[900] text-4xl uppercase tracking-tight mb-3" x-text="league.name"></h2>
-                        <p class="text-white/40 text-xs leading-relaxed mb-8 font-medium italic" x-text="league.description || 'No operational brief available for this sector.'"></p>
+                        <p class="text-white/40 text-xs leading-relaxed mb-8 font-medium itlic" x-text="league.description || 'No operational brief available for this sector.'"></p>
 
                         <div class="grid grid-cols-3 gap-3 mb-8">
                             <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
@@ -146,8 +146,8 @@
                                 <p class="text-xs font-black text-white uppercase" x-text="league.status"></p>
                             </div>
                             <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
-                                <p class="text-[7px] text-white/30 uppercase font-black mb-1">Load</p>
-                                <p class="text-xs font-black text-white" x-text="league.joined_count + '/' + league.total_slots"></p>
+                                <p class="text-[7px] text-white/30 uppercase font-black mb-1">Entry</p>
+                                <p class="text-xs font-black text-white" x-text="league.joined + '/' + league.total_slots"></p>
                             </div>
                         </div>
 
