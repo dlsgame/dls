@@ -242,7 +242,7 @@
                 },
 
                 async logout() {
-                    await _supabase.auth.signOut();
+                    await _supabase.auth.signOt();
                     window.location.href = 'signin.html';
                 }
             }
