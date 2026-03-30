@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0f1a">
+    <title>DLS26 | Neural Login</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        [x-cloak] { display: none !important; }
+
+        .glass-card { 
+            background: linear-gradient(160deg, #111827 0%, #0d1321 100%); 
+            border: 1px solid rgba(0, 255, 133, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #00ff85;
+            background: rgba(0, 255, 133, 0.05);
+            outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 133, 0.1);
+        }
+
+        .glow-button {
+            background: #00ff85;
+            color: #0a0f1a;
+            box-shadow: 0 0 20px rgba(0, 255, 133, 0.2);
+            transition: all 0.3s ease;
+        }
+        .glow-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 255, 133, 0.4);
+        }
+        .glow-button:active { transform: translateY(0); }
+
+        /* Scanning Animation */
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: #00ff85;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0.5;
+            box-shadow: 0 0 15px #00ff85;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body x-data="authApp()" class="h-full flex items-center justify-center p-6">
+
+    <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#00ff85]/5 blur-[120px] rounded-full"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full"></div>
+
+    <div class="w-full max-w-md relative z-10">
+        <div class="text-center mb-10">
+            <div class="inline-block relative p-4 mb-4">
+                <div class="absolute inset-0 border-2 border-[#00ff85]/20 rounded-3xl rotate-45"></div>
+                <svg class="w-12 h-12 text-[#00ff85] relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+            </div>
+            <h1 class="outfit text-4xl font-[900] tracking-tighter uppercase">DLS<span class="text-[#00ff85]">26</span></h1>
+            <p class="text-[#00ff85] text-[10px] font-black tracking-[0.4em] uppercase opacity-60">Neural Link Protocol</p>
+        </div>
+
+        <div class="glass-card rounded-[2.5rem] p-8 md:p-10 relative overflow-hidden">
+            <div x-show="loading" class="scan-line"></div>
+
+            <form @submit.prevent="login" class="space-y-6">
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Terminal ID (Email)</label>
+                    <input type="email" x-model="email" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="name@sector.com">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-white/40 tracking-widest mb-2 ml-1">Access Key (Password)</label>
+                    <input type="password" x-model="password" required 
+                           class="input-field w-full px-6 py-4 rounded-2xl text-sm font-medium"
+                           placeholder="••••••••">
+                </div>
+
+                <div x-show="error" x-text="error" 
+                     class="text-red-400 text-[10px] font-bold uppercase text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20" x-cloak>
+                </div>
+
+                <button type="submit" :disabled="loading"
+                        class="glow-button w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-widest text-sm flex items-center justify-center space-x-3">
+                    <template x-if="!loading">
+                        <span class="flex items-center">
+                            INITIALIZE SESSION
+                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </span>
+                    </template>
+                    <template x-if="loading">
+                        <svg class="animate-spin h-5 w-5 text-[#0a0f1a]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                </button>
+            </form>
+
+            <div class="mt-8 text-center">
+                <p class="text-white/30 text-[10px] font-bold uppercase tracking-widest">
+                    New User? <a href="signup.html" class="text-[#00ff85] hover:underline">Request Registry</a>
+                </p>
+            </div>
+        </div>
+
+        <p class="text-center mt-10 text-[8px] font-bold text-white/20 uppercase tracking-[0.5em]">
+            Secure encrypted connection via Supabase Shield
+        </p>
+    </div>
+
+    <script>
+        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+        function authApp() {
+            return {
+                email: '',
+                password: '',
+                loading: false,
+                error: '',
+
+                async login() {
+                    this.loading = true;
+                    this.error = '';
+
+                    try {
+                        const { data, error } = await _supabase.auth.signInWithPassword({
+                            email: this.email,
+                            password: this.password
+                        });
+
+                        if (error) throw error;
+
+                        // Success - move to home
+                        window.location.href = 'home.html';
+                    } catch (err) {
+                        this.error = err.message || 'Access Denied: Invalid Credentials';
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
