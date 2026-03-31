@@ -562,6 +562,7 @@
                 if (error) {
                     console.error("Join Error:", error.message);
                     this.joinStatus = 'Idle';
+                    alert("Error: " + error.message); // This will tell you the missing column
                 } else {
                     this.joinStatus = 'Pending';
                 }
