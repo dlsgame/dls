@@ -404,9 +404,9 @@
             </button>
         </template>
     </nav>
-
-    <script>
-    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+<script>
+    // Replace with your actual project URL and Anon Key
+    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'YOUR_ANON_KEY');
 
     function leagueApp() {
         return {
@@ -423,7 +423,7 @@
             joinStatus: 'Idle',
             standings: [],
             
-            // --- CRITICAL INITIALIZATIONS (Prevents Blank Page) ---
+            // --- CRITICAL INITIALIZATIONS ---
             results: [],
             groupedFixtures: {},
             userTeamName: '',
@@ -434,27 +434,38 @@
             scoringFix: null, hScore: 0, aScore: 0,
 
             async init() {
-                try {
-                    const { data: { user } } = await _supabase.auth.getUser();
-                    if (!user) { window.location.href = 'signin.html'; return; }
-                    this.user = user;
-                    this.isAdmin = (user.id === this.adminId);
+                // Use getSession to prevent random logouts during navigation
+                const { data: { session } } = await _supabase.auth.getSession();
+                
+                if (!session) {
+                    window.location.href = 'signin.html';
+                    return;
+                }
 
-                    // Fetch User Team Info
-                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', user.id).single();
+                this.user = session.user;
+                this.isAdmin = (this.user.id === this.adminId);
+
+                try {
+                    // Fetch basic user info
+                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).single();
                     if(ui) {
                         this.userData = ui;
                         this.userTeamName = ui.team_name;
                     }
 
-                    await this.fetchLeagueData();
-                    await this.fetchMembers();
-                    await this.fetchStandings();
-                    await this.fetchFixtures();
-                    await this.fetchResults(); // This triggers calcInsights()
+                    // Load all data sections
+                    // Using allSettled ensures that if one fails, the others still load
+                    await Promise.allSettled([
+                        this.fetchLeagueData(),
+                        this.fetchMembers(),
+                        this.fetchStandings(),
+                        this.fetchFixtures(),
+                        this.fetchResults()
+                    ]);
                     
                 } catch (e) {
-                    console.error("Initialization Error:", e);
+                    console.warn("Init Warning: Some data could not be retrieved.", e);
+                    // We do NOT redirect to signin.html here.
                 } finally {
                     this.loading = false;
                 }
@@ -471,10 +482,11 @@
                     .select('*', { count: 'exact' })
                     .eq('league_id', this.leagueId);
                 
-                if (error) return console.error(error);
+                if (error) throw error;
                 
                 this.joinedCount = count || 0;
-                // Using user_id to match your new table structure
+                
+                // Matches your new user_id column
                 const me = data.find(m => m.user_id === this.user.id);
                 if (me) {
                     this.joinStatus = me.status;
@@ -489,9 +501,11 @@
                     .eq('league_id', this.leagueId)
                     .order('created_at', { ascending: false });
 
-                if (!error && data) {
+                if (error) throw error;
+                
+                if (data) {
                     this.results = data;
-                    this.calcInsights(); // Calculate the Form and Records
+                    this.calcInsights(); 
                 }
             },
 
@@ -500,7 +514,8 @@
                 let bWin = null, bLoss = null;
                 let maxWinMargin = -1, maxLossMargin = -1;
 
-                // Filter results for the current user's team only
+                if (!this.userTeamName) return;
+
                 const myResults = this.results.filter(r => 
                     r.home_name === this.userTeamName || r.away_name === this.userTeamName
                 );
@@ -513,12 +528,10 @@
 
                     gs += myS; ga += opS;
 
-                    // Form Spectrum (Limit to last 5)
                     if (form.length < 5) {
                         form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
                     }
 
-                    // Record Breakers Logic
                     if (margin > maxWinMargin) {
                         maxWinMargin = margin;
                         bWin = r;
@@ -530,29 +543,72 @@
                 });
 
                 this.userStats = { gs, ga };
-                // DLS Style: Oldest match is first (faint), Latest is last (bold + arrow)
                 this.userForm = form.reverse(); 
                 this.biggestWin = bWin;
                 this.biggestLoss = bLoss;
             },
 
             async requestJoin() {
+                if (this.joinStatus === 'Requesting') return;
+                
                 this.joinStatus = 'Requesting';
                 const { error } = await _supabase.from('league_members').insert([{
-                    user_id: this.user.id, // Linked to your new user_id column
+                    user_id: this.user.id,
                     league_id: this.leagueId,
-                    team_name: this.userData.team_name,
-                    logo_url: this.userData.logo_url,
-                    email: this.userData.email,
+                    team_name: this.userData?.team_name || 'Unknown Team',
+                    logo_url: this.userData?.logo_url || '',
+                    email: this.user.email,
                     status: 'Pending'
                 }]);
-                if (!error) this.joinStatus = 'Pending';
-                else this.joinStatus = 'Idle';
+
+                if (error) {
+                    console.error("Join Error:", error.message);
+                    this.joinStatus = 'Idle';
+                } else {
+                    this.joinStatus = 'Pending';
+                }
+            },
+
+            async fetchStandings() {
+                const { data, error } = await _supabase.from('standings').select('*').eq('league_id', this.leagueId).order('points', { ascending: false }).order('gd', { ascending: false });
+                if (!error) this.standings = data;
+            },
+
+            async fetchFixtures() {
+                const { data, error } = await _supabase.from('fixtures').select('*').eq('league_id', this.leagueId).order('matchday', { ascending: true });
+                if (!error) {
+                    this.groupedFixtures = data.reduce((acc, fix) => {
+                        (acc[fix.matchday] = acc[fix.matchday] || []).push(fix);
+                        return acc;
+                    }, {});
+                }
+            },
+
+            async submitScore() {
+                if (!this.scoringFix) return;
+                const { error } = await _supabase.from('results').insert([{
+                    league_id: this.leagueId,
+                    home_name: this.scoringFix.home_team,
+                    away_name: this.scoringFix.away_team,
+                    h_score: parseInt(this.hScore),
+                    a_score: parseInt(this.aScore),
+                    home_logo: this.scoringFix.home_logo,
+                    away_logo: this.scoringFix.away_logo
+                }]);
+
+                if (!error) {
+                    await _supabase.from('fixtures').delete().eq('id', this.scoringFix.id);
+                    this.scoringFix = null;
+                    this.hScore = 0; this.aScore = 0;
+                    await this.fetchFixtures();
+                    await this.fetchResults();
+                    await this.fetchStandings();
+                }
             }
-            // ... include fetchStandings, fetchFixtures, submitScore as per your previous code
         }
     }
-    </script>
+                </script>
+    
     
 
 </body>
