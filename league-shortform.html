@@ -60,6 +60,33 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
     </style>
+    <style>
+    .form-box {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 14px;
+        color: rgba(0,0,0,0.8);
+        position: relative;
+    }
+    .form-latest {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(0,255,133,0.3);
+    }
+    /* The DLS downward arrow indicator */
+    .form-arrow {
+        width: 0; 
+        height: 0; 
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid #00ff85; /* Matches your theme green */
+        margin-top: 4px;
+    }
+    </style>
     
 </head>
 <body x-data="leagueApp()" x-init="init()" class="pb-28">
@@ -254,40 +281,87 @@
     </template>
         </div>
         
-
-        <div x-show="activeTab === 'insights'" x-transition x-cloak>
-            <div class="glass-card rounded-[2.5rem] p-8 mb-6 text-center">
-                <p class="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-6">Form Spectrum (Last 5)</p>
-                <div class="flex justify-center items-end space-x-3 h-16">
-                    <template x-for="(f, i) in userForm" :key="i">
-                        <div class="flex flex-col items-center">
-                            <div :class="{
-                                'bg-[#00ff85]': f === 'W',
-                                'bg-[#ffcc00]': f === 'D',
-                                'bg-[#ff4d4d]': f === 'L',
-                                'opacity-40': i < userForm.length - 1,
-                                'form-latest': i === userForm.length - 1
-                            }" class="form-box text-[#0a0f1a]" x-text="f"></div>
-                            <template x-if="i === userForm.length - 1">
-                                <div class="form-arrow"></div>
-                            </template>
-                        </div>
+<div x-show="activeTab === 'insights'" x-transition x-cloak class="space-y-6">
+    
+    <div class="glass-card rounded-[2.5rem] p-6 text-center border border-white/5">
+        <p class="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-6 text-left px-2">FORM</p>
+        
+        <div class="flex justify-center items-start space-x-2">
+            <template x-for="(f, i) in userForm" :key="i">
+                <div class="flex flex-col items-center">
+                    <div class="form-box" 
+                         :class="{
+                            'bg-[#00ff85]': f === 'W',
+                            'bg-[#ffcc00]': f === 'D',
+                            'bg-[#ff4d4d]': f === 'L',
+                            'opacity-20': i === 0, /* Oldest match is most faint */
+                            'opacity-50': i > 0 && i < userForm.length - 1,
+                            'opacity-100 form-latest': i === userForm.length - 1 /* Latest is bold */
+                         }" x-text="f">
+                    </div>
+                    <template x-if="i === userForm.length - 1">
+                        <div class="form-arrow"></div>
                     </template>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div class="glass-card p-6 rounded-3xl">
-                    <p class="text-[8px] font-black uppercase text-white/30 mb-2">Firepower (GS)</p>
-                    <p class="text-3xl font-[900] outfit text-[#00ff85]" x-text="userStats.gs"></p>
-                </div>
-                <div class="glass-card p-6 rounded-3xl">
-                    <p class="text-[8px] font-black uppercase text-white/30 mb-2">Leakage (GA)</p>
-                    <p class="text-3xl font-[900] outfit text-red-500" x-text="userStats.ga"></p>
-                </div>
-            </div>
+            </template>
         </div>
 
+        <div class="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/5">
+            <div>
+                <p class="text-[9px] font-bold text-white/30 uppercase">Scored</p>
+                <p class="text-2xl font-black text-white" x-text="userStats.gs"></p>
+            </div>
+            <div>
+                <p class="text-[9px] font-bold text-white/30 uppercase">Conceded</p>
+                <p class="text-2xl font-black text-white" x-text="userStats.ga"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <p class="text-[10px] font-black text-[#00ff85] uppercase tracking-widest px-2">Record Breakers</p>
+        
+        <template x-if="biggestWin">
+            <div>
+                <p class="text-[8px] font-bold text-white/20 mb-2 uppercase ml-2">Biggest Victory</p>
+                <div class="glass-card p-3 rounded-2xl flex items-center justify-between border border-[#00ff85]/20 bg-[#00ff85]/5">
+                    <div class="flex flex-col items-center w-20">
+                        <img :src="biggestWin.home_logo" class="w-8 h-8 rounded-full mb-1">
+                        <span class="text-[8px] font-black text-white uppercase truncate w-full text-center" x-text="biggestWin.home_name"></span>
+                    </div>
+                    <div class="bg-black/40 px-4 py-1 rounded-lg border border-[#00ff85]/30">
+                        <span class="text-lg font-black text-[#00ff85]" x-text="biggestWin.h_score + ' - ' + biggestWin.a_score"></span>
+                    </div>
+                    <div class="flex flex-col items-center w-20">
+                        <img :src="biggestWin.away_logo" class="w-8 h-8 rounded-full mb-1">
+                        <span class="text-[8px] font-black text-white uppercase truncate w-full text-center" x-text="biggestWin.away_name"></span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="biggestLoss">
+            <div>
+                <p class="text-[8px] font-bold text-white/20 mb-2 uppercase ml-2">Toughest Defeat</p>
+                <div class="glass-card p-3 rounded-2xl flex items-center justify-between border border-red-500/20 bg-red-500/5">
+                    <div class="flex flex-col items-center w-20">
+                        <img :src="biggestLoss.home_logo" class="w-8 h-8 rounded-full mb-1">
+                        <span class="text-[8px] font-black text-white uppercase truncate w-full text-center" x-text="biggestLoss.home_name"></span>
+                    </div>
+                    <div class="bg-black/40 px-4 py-1 rounded-lg border border-red-500/30">
+                        <span class="text-lg font-black text-red-500" x-text="biggestLoss.h_score + ' - ' + biggestLoss.a_score"></span>
+                    </div>
+                    <div class="flex flex-col items-center w-20">
+                        <img :src="biggestLoss.away_logo" class="w-8 h-8 rounded-full mb-1">
+                        <span class="text-[8px] font-black text-white uppercase truncate w-full text-center" x-text="biggestLoss.away_name"></span>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+        
+        
     </main>
 
     <div x-show="scoringFix" class="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60" x-cloak>
@@ -426,20 +500,43 @@
                 },
 
                 calcInsights() {
-                    let gs = 0, ga = 0, form = [];
-                    this.results.forEach(r => {
-                        const isHome = r.home_name === this.userTeamName;
-                        const isAway = r.away_name === this.userTeamName;
-                        if (isHome || isAway) {
-                            const myS = isHome ? r.h_score : r.a_score;
-                            const opS = isHome ? r.a_score : r.h_score;
-                            gs += myS; ga += opS;
-                            if (form.length < 5) form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
-                        }
-                    });
-                    this.userStats = { gs, ga };
-                    this.userForm = form.reverse();
-                },
+    let gs = 0, ga = 0, form = [];
+    let bWin = null, bLoss = null;
+    let maxWinMargin = -1, maxLossMargin = -1;
+
+    // Filter results involving userTeamName
+    const myResults = this.results.filter(r => r.home_name === this.userTeamName || r.away_name === this.userTeamName);
+
+    myResults.forEach(r => {
+        const isHome = r.home_name === this.userTeamName;
+        const myS = isHome ? r.h_score : r.a_score;
+        const opS = isHome ? r.a_score : r.h_score;
+        const margin = myS - opS;
+
+        // Totals
+        gs += myS; ga += opS;
+
+        // Form (Take last 5)
+        if (form.length < 5) form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
+
+        // Biggest Win Logic
+        if (margin > maxWinMargin) {
+            maxWinMargin = margin;
+            bWin = r;
+        }
+        // Biggest Loss Logic
+        if (margin < 0 && Math.abs(margin) > maxLossMargin) {
+            maxLossMargin = Math.abs(margin);
+            bLoss = r;
+        }
+    });
+
+    this.userStats = { gs, ga };
+    this.userForm = form.reverse(); // Standard: Oldest (Left) -> Latest (Right)
+    this.biggestWin = bWin;
+    this.biggestLoss = bLoss;
+                }
+            
 
                 async submitScore() {
                     const f = this.scoringFix;
