@@ -187,23 +187,50 @@
             </template>
         </div>
 
-        <div x-show="activeTab === 'results'" x-transition x-cloak class="space-y-4">
-            <template x-for="res in results" :key="res.id">
-                <div class="glass-card p-6 rounded-[2rem] flex items-center justify-between">
-                    <div class="w-[35%] flex flex-col items-center">
-                        <img :src="res.home_logo" class="w-10 h-10 rounded-full object-cover mb-2">
-                        <span class="text-[10px] font-black uppercase text-center" x-text="res.home_name"></span>
+        <div x-show="activeTab === 'results'" x-transition x-cloak class="space-y-3">
+    <template x-for="res in results" :key="res.id">
+        <div class="glass-card relative overflow-hidden rounded-2xl border border-white/5 shadow-lg transition-all"
+             :class="{
+                'bg-yellow-500/5': res.h_score === res.a_score,
+                'bg-gradient-to-r from-[#00ff8510] to-red-500/10': res.h_score > res.a_score,
+                'bg-gradient-to-r from-red-500/10 to-[#00ff8510]': res.a_score > res.h_score
+             }">
+            
+            <div class="flex items-center justify-between p-3 h-20">
+                <div class="w-[38%] flex flex-col items-center justify-center space-y-1">
+                    <div class="relative">
+                        <img :src="res.home_logo" 
+                             class="w-10 h-10 rounded-full object-cover bg-black/40 border border-white/10"
+                             :class="res.h_score > res.a_score ? 'winner-shimmer ring-2 ring-[#00ff85]' : ''">
                     </div>
-                    <div class="bg-[#00ff8510] border border-[#00ff8533] px-6 py-2 rounded-2xl">
-                        <span class="outfit text-2xl font-[900] text-[#00ff85]" x-text="res.h_score + ' - ' + res.a_score"></span>
-                    </div>
-                    <div class="w-[35%] flex flex-col items-center">
-                        <img :src="res.away_logo" class="w-10 h-10 rounded-full object-cover mb-2">
-                        <span class="text-[10px] font-black uppercase text-center" x-text="res.away_name"></span>
-                    </div>
+                    <span class="text-[9px] font-black uppercase text-center tracking-tighter leading-none" 
+                          :class="res.h_score > res.a_score ? 'text-[#00ff85]' : 'text-white/60'"
+                          x-text="res.home_name"></span>
                 </div>
-            </template>
+
+                <div class="flex flex-col items-center justify-center px-2 z-10">
+                    <div class="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-1 rounded-xl">
+                        <span class="text-xl font-[900] text-white tracking-tighter whitespace-nowrap" 
+                              x-text="res.h_score + ' - ' + res.a_score"></span>
+                    </div>
+                    <span class="text-[7px] font-bold text-white/20 uppercase mt-1 tracking-widest">FT</span>
+                </div>
+
+                <div class="w-[38%] flex flex-col items-center justify-center space-y-1">
+                    <div class="relative">
+                        <img :src="res.away_logo" 
+                             class="w-10 h-10 rounded-full object-cover bg-black/40 border border-white/10"
+                             :class="res.a_score > res.h_score ? 'winner-shimmer ring-2 ring-[#00ff85]' : ''">
+                    </div>
+                    <span class="text-[9px] font-black uppercase text-center tracking-tighter leading-none" 
+                          :class="res.a_score > res.h_score ? 'text-[#00ff85]' : 'text-white/60'"
+                          x-text="res.away_name"></span>
+                </div>
+            </div>
         </div>
+    </template>
+        </div>
+        
 
         <div x-show="activeTab === 'insights'" x-transition x-cloak>
             <div class="glass-card rounded-[2.5rem] p-8 mb-6 text-center">
