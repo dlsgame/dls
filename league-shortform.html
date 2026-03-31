@@ -38,6 +38,29 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
+    <style>
+    /* Winner Shimmer Animation */
+    @keyframes shimmer {
+        0% { opacity: 0.8; filter: brightness(1); }
+        50% { opacity: 1; filter: brightness(1.4) drop-shadow(0 0 8px #00ff85); }
+        100% { opacity: 0.8; filter: brightness(1); }
+    }
+
+    .winner-shimmer {
+        animation: shimmer 2s infinite ease-in-out;
+    }
+
+    /* Optional: Ensure logos fit perfectly in the circle */
+    .results-logo {
+        width: 40px; /* 10rem equivalent */
+        height: 40px;
+        border-radius: 9999px;
+        object-fit: cover;
+        background-color: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    </style>
+    
 </head>
 <body x-data="leagueApp()" x-init="init()" class="pb-28">
 
