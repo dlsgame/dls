@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLS26 | Fixture Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@900&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #0a0f1a; color: white; font-family: 'DM Sans', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 255, 133, 0.15); backdrop-blur: 10px; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300ff85'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.5em;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="generator()" x-init="init()">
+
+    <div class="max-w-2xl mx-auto p-6 pt-12">
+        <div class="text-center mb-10">
+            <h1 class="outfit text-4xl font-900 tracking-tighter uppercase">Fixture <span class="text-[#00ff85]">Generator</span></h1>
+            <p class="text-white/40 text-xs mt-2 tracking-widest font-bold">DOUBLE ROUND ROBIN ENGINE v2.0</p>
+        </div>
+
+        <div class="glass rounded-3xl p-8">
+            <div class="mb-8">
+                <label class="block text-[10px] font-black text-[#00ff85] uppercase tracking-widest mb-3 ml-1">Target Sector</label>
+                <select x-model="selectedLeagueId" @change="fetchTeams()" 
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 outfit font-bold text-white focus:outline-none focus:border-[#00ff85] transition-all">
+                    <option value="" class="bg-[#0a0f1a]">Select Active League...</option>
+                    <template x-for="league in leagues" :key="league.id">
+                        <option :value="league.id" class="bg-[#0a0f1a]" x-text="league.name + ' (Season ' + league.season_number + ')'"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/5 text-center">
+                    <span class="text-3xl font-black outfit text-[#00ff85]" x-text="teams.length">0</span>
+                    <p class="text-[9px] text-white/30 uppercase font-black tracking-widest mt-1">Teams Detected</p>
+                </div>
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/5 text-center">
+                    <span class="text-3xl font-black outfit text-white" x-text="selectedLeagueId ? (teams.length % 2 === 0 ? teams.length - 1 : teams.length) : 0">0</span>
+                    <p class="text-[9px] text-white/30 uppercase font-black tracking-widest mt-1">Total Matchdays</p>
+                </div>
+            </div>
+
+            <div x-show="selectedLeagueId && teams.length < 2" class="text-red-400 text-center text-[11px] font-bold mb-6 italic" x-cloak>
+                Insufficient teams for full season deployment.
+            </div>
+
+            <div class="space-y-4">
+                <button @click="generateMatches()" :disabled="generating || !selectedLeagueId || teams.length < 2"
+                    class="w-full py-4 bg-[#00ff85] text-[#0a0f1a] rounded-xl outfit font-900 uppercase tracking-widest text-sm hover:scale-[1.02] transition-all disabled:opacity-20 disabled:grayscale">
+                    <span x-text="generating ? 'CALCULATING SEASON...' : 'GENERATE FULL DOUBLE SEASON'"></span>
+                </button>
+
+                <button @click="clearFixtures()" :disabled="!selectedLeagueId"
+                    class="w-full py-4 border border-red-500/30 text-red-500 rounded-xl outfit font-900 uppercase tracking-widest text-[10px] hover:bg-red-500/5 transition-all disabled:opacity-10">
+                    WIPE LEAGUE FIXTURES
+                </button>
+            </div>
+        </div>
+
+        <div x-show="preview.length > 0" class="mt-10 space-y-3" x-transition x-cloak>
+            <div class="flex items-center justify-between px-2">
+                <h3 class="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Season Preview</h3>
+                <span class="text-[10px] font-black text-[#00ff85] uppercase" x-text="preview.length + ' Matches Generated'"></span>
+            </div>
+            <div class="max-h-96 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                <template x-for="(match, index) in preview" :key="index">
+                    <div class="glass p-4 rounded-xl flex items-center justify-between text-[11px] font-bold border-l-2" :class="match.match_date === '1st Leg' ? 'border-[#00ff85]' : 'border-blue-400'">
+                        <div class="w-1/3 truncate" x-text="match.home_team"></div>
+                        <div class="flex flex-col items-center">
+                            <div class="px-2 py-0.5 bg-white/5 rounded text-[8px] text-white/40 mb-1" x-text="'MD ' + match.matchday"></div>
+                            <div class="text-[#00ff85] text-[9px]" x-text="match.match_date"></div>
+                        </div>
+                        <div class="w-1/3 text-right truncate" x-text="match.away_team"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+        function generator() {
+            return {
+                leagues: [],
+                selectedLeagueId: '',
+                teams: [],
+                preview: [],
+                generating: false,
+
+                async init() {
+                    const { data } = await _supabase
+                        .from('leagues')
+                        .select('id, name, season_number')
+                        .order('created_at', { ascending: false });
+                    if (data) this.leagues = data;
+                },
+
+                async fetchTeams() {
+                    if (!this.selectedLeagueId) { this.teams = []; return; }
+                    const { data } = await _supabase
+                        .from('standings')
+                        .select('team_name, logo_url')
+                        .eq('league_id', this.selectedLeagueId);
+                    if (data) this.teams = data;
+                    this.preview = [];
+                },
+
+                async generateMatches() {
+                    if (this.teams.length < 2) return;
+                    this.generating = true;
+
+                    // Prepare teams array for Round Robin
+                    let pool = [...this.teams].sort(() => 0.5 - Math.random());
+                    if (pool.length % 2 !== 0) {
+                        pool.push({ team_name: 'BYE', logo_url: '' });
+                    }
+
+                    const n = pool.length;
+                    const rounds = n - 1;
+                    const half = n / 2;
+                    let allMatches = [];
+
+                    // Circle Algorithm for Round Robin
+                    for (let day = 0; day < rounds; day++) {
+                        for (let i = 0; i < half; i++) {
+                            const home = pool[i];
+                            const away = pool[n - 1 - i];
+
+                            if (home.team_name !== 'BYE' && away.team_name !== 'BYE') {
+                                // First Leg
+                                allMatches.push({
+                                    home_team: home.team_name,
+                                    home_logo: home.logo_url,
+                                    away_team: away.team_name,
+                                    away_logo: away.logo_url,
+                                    match_date: "1st Leg",
+                                    league_id: this.selectedLeagueId,
+                                    matchday: day + 1
+                                });
+                                // Second Leg (Twice on same day)
+                                allMatches.push({
+                                    home_team: away.team_name,
+                                    home_logo: away.logo_url,
+                                    away_team: home.team_name,
+                                    away_logo: home.logo_url,
+                                    match_date: "2nd Leg",
+                                    league_id: this.selectedLeagueId,
+                                    matchday: day + 1
+                                });
+                            }
+                        }
+                        // Rotate pool (keep first element fixed)
+                        pool.splice(1, 0, pool.pop());
+                    }
+
+                    this.preview = allMatches;
+
+                    const { error } = await _supabase.from('fixtures').insert(allMatches);
+                    
+                    if (error) {
+                        alert("Error: " + error.message);
+                    } else {
+                        alert(`Successfully deployed ${rounds} Matchdays. Total matches: ${allMatches.length}`);
+                    }
+                    
+                    this.generating = false;
+                },
+
+                async clearFixtures() {
+                    if(!confirm("Wipe all fixtures for the selected league?")) return;
+                    const { error } = await _supabase
+                        .from('fixtures')
+                        .delete()
+                        .eq('league_id', this.selectedLeagueId);
+                    if (!error) {
+                        this.preview = [];
+                        alert("League fixtures cleared.");
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 133, 0.2); border-radius: 10px; }
+    </style>
+</body>
+</html>
