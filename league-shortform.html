@@ -406,182 +406,154 @@
     </nav>
 
     <script>
-        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'YOUR_ANON_KEY');
 
-        function leagueApp() {
-            return {
-                loading: true,
-                activeTab: 'overview',
-                leagueId: new URLSearchParams(window.location.search).get('id'),
-                isAdmin: false,
-                adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
-                user: null,
-                userData: null,
-                league: {},
-                joinedCount: 0,
-                isJoined: false,
-                joinStatus: 'Idle', // Idle, Requesting, Pending, Approved
-                standings: [],
-                results: [],
-                groupedFixtures: {},
-                userTeamName: '',
-                userStats: { gs: 0, ga: 0 },
-                userForm: [],
-                scoringFix: null, hScore: 0, aScore: 0,
+    function leagueApp() {
+        return {
+            loading: true,
+            activeTab: 'overview',
+            leagueId: new URLSearchParams(window.location.search).get('id'),
+            isAdmin: false,
+            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+            user: null,
+            userData: null,
+            league: {},
+            joinedCount: 0,
+            isJoined: false,
+            joinStatus: 'Idle',
+            standings: [],
+            
+            // --- CRITICAL INITIALIZATIONS (Prevents Blank Page) ---
+            results: [],
+            groupedFixtures: {},
+            userTeamName: '',
+            userStats: { gs: 0, ga: 0 },
+            userForm: [],
+            biggestWin: null,
+            biggestLoss: null,
+            scoringFix: null, hScore: 0, aScore: 0,
 
-                async init() {
+            async init() {
+                try {
                     const { data: { user } } = await _supabase.auth.getUser();
                     if (!user) { window.location.href = 'signin.html'; return; }
                     this.user = user;
                     this.isAdmin = (user.id === this.adminId);
 
+                    // Fetch User Team Info
                     const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', user.id).single();
-                    this.userData = ui;
-                    this.userTeamName = ui.team_name;
+                    if(ui) {
+                        this.userData = ui;
+                        this.userTeamName = ui.team_name;
+                    }
 
                     await this.fetchLeagueData();
                     await this.fetchMembers();
                     await this.fetchStandings();
                     await this.fetchFixtures();
-                    await this.fetchResults();
+                    await this.fetchResults(); // This triggers calcInsights()
                     
+                } catch (e) {
+                    console.error("Initialization Error:", e);
+                } finally {
                     this.loading = false;
-                },
+                }
+            },
 
-                async fetchLeagueData() {
-                    const { data } = await _supabase.from('leagues').select('*').eq('id', this.leagueId).single();
-                    this.league = data;
-                },
+            async fetchLeagueData() {
+                const { data } = await _supabase.from('leagues').select('*').eq('id', this.leagueId).single();
+                if (data) this.league = data;
+            },
 
-                async fetchMembers() {
-                    const { data, count } = await _supabase.from('league_members').select('*', { count: 'exact' }).eq('league_id', this.leagueId);
-                    this.joinedCount = count || 0;
-                    const me = data.find(m => m.email === this.user.email);
-                    if (me) {
-                        this.joinStatus = me.status;
-                        if (me.status === 'Approved') this.isJoined = true;
+            async fetchMembers() {
+                const { data, count, error } = await _supabase
+                    .from('league_members')
+                    .select('*', { count: 'exact' })
+                    .eq('league_id', this.leagueId);
+                
+                if (error) return console.error(error);
+                
+                this.joinedCount = count || 0;
+                // Using user_id to match your new table structure
+                const me = data.find(m => m.user_id === this.user.id);
+                if (me) {
+                    this.joinStatus = me.status;
+                    if (me.status === 'Approved') this.isJoined = true;
+                }
+            },
+
+            async fetchResults() {
+                const { data, error } = await _supabase
+                    .from('results')
+                    .select('*')
+                    .eq('league_id', this.leagueId)
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    this.results = data;
+                    this.calcInsights(); // Calculate the Form and Records
+                }
+            },
+
+            calcInsights() {
+                let gs = 0, ga = 0, form = [];
+                let bWin = null, bLoss = null;
+                let maxWinMargin = -1, maxLossMargin = -1;
+
+                // Filter results for the current user's team only
+                const myResults = this.results.filter(r => 
+                    r.home_name === this.userTeamName || r.away_name === this.userTeamName
+                );
+
+                myResults.forEach(r => {
+                    const isHome = r.home_name === this.userTeamName;
+                    const myS = isHome ? r.h_score : r.a_score;
+                    const opS = isHome ? r.a_score : r.h_score;
+                    const margin = myS - opS;
+
+                    gs += myS; ga += opS;
+
+                    // Form Spectrum (Limit to last 5)
+                    if (form.length < 5) {
+                        form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
                     }
-                },
 
-                async requestJoin() {
-                    this.joinStatus = 'Requesting';
-                    const { error } = await _supabase.from('league_members').insert([{
-                        user_id: this.user.id,
-                        league_id: this.leagueId,
-                        team_name: this.userData.team_name,
-                        logo_url: this.userData.logo_url,
-                        email: this.userData.email,
-                        status: 'Pending'
-                    }]);
-                    if (!error) this.joinStatus = 'Pending';
-                },
+                    // Record Breakers Logic
+                    if (margin > maxWinMargin) {
+                        maxWinMargin = margin;
+                        bWin = r;
+                    }
+                    if (margin < 0 && Math.abs(margin) > maxLossMargin) {
+                        maxLossMargin = Math.abs(margin);
+                        bLoss = r;
+                    }
+                });
 
-                async fetchStandings() {
-                    const { data } = await _supabase.from('standings')
-                        .select('*').eq('league_id', this.leagueId)
-                        .order('points', { ascending: false }).order('gd', { ascending: false });
-                    this.standings = data || [];
-                },
+                this.userStats = { gs, ga };
+                // DLS Style: Oldest match is first (faint), Latest is last (bold + arrow)
+                this.userForm = form.reverse(); 
+                this.biggestWin = bWin;
+                this.biggestLoss = bLoss;
+            },
 
-                async fetchFixtures() {
-                    const { data } = await _supabase.from('fixtures').select('*').eq('league_id', this.leagueId);
-                    const groups = {};
-                    data.forEach(f => {
-                        if (!groups[f.matchday]) groups[f.matchday] = [];
-                        groups[f.matchday].push(f);
-                    });
-                    this.groupedFixtures = groups;
-                },
-
-                async fetchResults() {
-                    const { data } = await _supabase.from('results').select('*').eq('league_id', this.leagueId).order('created_at', { ascending: false });
-                    this.results = data || [];
-                    this.calcInsights();
-                },
-
-                calcInsights() {
-    let gs = 0, ga = 0, form = [];
-    let bWin = null, bLoss = null;
-    let maxWinMargin = -1, maxLossMargin = -1;
-
-    // Filter results involving userTeamName
-    const myResults = this.results.filter(r => r.home_name === this.userTeamName || r.away_name === this.userTeamName);
-
-    myResults.forEach(r => {
-        const isHome = r.home_name === this.userTeamName;
-        const myS = isHome ? r.h_score : r.a_score;
-        const opS = isHome ? r.a_score : r.h_score;
-        const margin = myS - opS;
-
-        // Totals
-        gs += myS; ga += opS;
-
-        // Form (Take last 5)
-        if (form.length < 5) form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
-
-        // Biggest Win Logic
-        if (margin > maxWinMargin) {
-            maxWinMargin = margin;
-            bWin = r;
-        }
-        // Biggest Loss Logic
-        if (margin < 0 && Math.abs(margin) > maxLossMargin) {
-            maxLossMargin = Math.abs(margin);
-            bLoss = r;
-        }
-    });
-
-    this.userStats = { gs, ga };
-    this.userForm = form.reverse(); // Standard: Oldest (Left) -> Latest (Right)
-    this.biggestWin = bWin;
-    this.biggestLoss = bLoss;
-                }
-            
-
-                async submitScore() {
-                    const f = this.scoringFix;
-                    const hS = parseInt(this.hScore);
-                    const aS = parseInt(this.aScore);
-
-                    // 1. Create Result
-                    await _supabase.from('results').insert([{
-                        league_id: this.leagueId,
-                        home_name: f.home_team,
-                        away_name: f.away_team,
-                        h_score: hS,
-                        a_score: aS,
-                        home_logo: f.home_logo,
-                        away_logo: f.away_logo,
-                        matchday: f.matchday
-                    }]);
-
-                    // 2. Update Standings Logic (Simplified for brevity, standard SQL update recommended)
-                    const updateTeam = async (name, gs, ga) => {
-                        const { data } = await _supabase.from('standings').select('*').eq('league_id', this.leagueId).eq('team_name', name).single();
-                        if (data) {
-                            const won = gs > ga ? 1 : 0;
-                            const drawn = gs === ga ? 1 : 0;
-                            const lost = gs < ga ? 1 : 0;
-                            const pts = (won * 3) + (drawn * 1);
-                            await _supabase.from('standings').update({
-                                played: data.played + 1, won: data.won + won, drawn: data.drawn + drawn,
-                                lost: data.lost + lost, gs: data.gs + gs, ga: data.ga + ga,
-                                gd: (data.gs + gs) - (data.ga + ga), points: data.points + pts
-                            }).eq('id', data.id);
-                        }
-                    };
-
-                    await updateTeam(f.home_team, hS, aS);
-                    await updateTeam(f.away_team, aS, hS);
-
-                    // 3. Delete Fixture
-                    await _supabase.from('fixtures').delete().eq('id', f.id);
-
-                    this.scoringFix = null;
-                    location.reload();
-                }
+            async requestJoin() {
+                this.joinStatus = 'Requesting';
+                const { error } = await _supabase.from('league_members').insert([{
+                    user_id: this.user.id, // Linked to your new user_id column
+                    league_id: this.leagueId,
+                    team_name: this.userData.team_name,
+                    logo_url: this.userData.logo_url,
+                    email: this.userData.email,
+                    status: 'Pending'
+                }]);
+                if (!error) this.joinStatus = 'Pending';
+                else this.joinStatus = 'Idle';
             }
+            // ... include fetchStandings, fetchFixtures, submitScore as per your previous code
         }
+    }
     </script>
+    
+
 </body>
 </html>
