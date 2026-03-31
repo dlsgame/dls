@@ -387,7 +387,8 @@
 
     <nav class="fixed bottom-0 left-0 right-0 bg-[#0a0f1a]/95 border-t border-white/5 flex justify-around p-3 pb-8 backdrop-blur-xl z-[100]">
         <template x-for="tab in ['overview', 'standings', 'fixtures', 'results', 'insights']">
-            <button @click="isJoined || tab === 'overview' ? activeTab = tab : alert('Join League to Unlock')" 
+            <button @click="activeTab = 'standings','fixtures','results','insights','overview'"
+                
                     :class="[
                         activeTab === tab ? 'nav-active' : 'text-white/20',
                         !isJoined && tab !== 'overview' ? 'opacity-30 grayscale' : ''
