@@ -97,40 +97,59 @@
         </div>
 
         <div x-show="activeTab === 'standings'" x-transition x-cloak>
-            <div class="glass-card rounded-3xl overflow-hidden">
-                <table class="table-fixed-cols">
-                    <thead class="bg-black/40 text-[8px] font-black uppercase text-white/30 border-b border-white/5">
-                        <tr>
-                            <th class="py-4 w-8 text-center">Pos</th>
-                            <th class="py-4 text-left pl-2">Club</th>
-                            <th class="w-8 text-center">MP</th>
-                            <th class="w-6 text-center">W</th>
-                            <th class="w-6 text-center">D</th>
-                            <th class="w-6 text-center">L</th>
-                            <th class="w-12 text-center text-[#00ff85]">PTS</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5 text-[10px]">
-                        <template x-for="(team, i) in standings" :key="i">
-                            <tr :class="team.team_name === userTeamName ? 'row-highlight' : ''" class="h-12">
-                                <td class="text-center font-black text-white/20" x-text="i+1"></td>
-                                <td class="pl-2">
-                                    <div class="flex items-center space-x-2">
-                                        <img :src="team.logo_url" class="w-5 h-5 rounded-full object-cover">
-                                        <span class="font-bold uppercase truncate" x-text="team.team_name"></span>
-                                    </div>
-                                </td>
-                                <td class="text-center text-white/60" x-text="team.played"></td>
-                                <td class="text-center" x-text="team.won"></td>
-                                <td class="text-center" x-text="team.drawn"></td>
-                                <td class="text-center" x-text="team.lost"></td>
-                                <td class="text-center font-black text-[#00ff85] text-xs" x-text="team.points"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="glass-card rounded-3xl overflow-hidden">
+        <table class="w-full table-fixed border-collapse">
+            <thead class="bg-black/40 text-[7px] font-black uppercase text-white/30 border-b border-white/5">
+                <tr>
+                    <th class="py-4 w-6 text-center">Pos</th>
+                    <th class="py-4 text-left pl-2">Club</th>
+                    <th class="w-6 text-center">MP</th>
+                    <th class="w-6 text-center">W</th>
+                    <th class="w-6 text-center">D</th>
+                    <th class="w-6 text-center">L</th>
+                    <th class="w-6 text-center">GS</th>
+                    <th class="w-6 text-center">GA</th>
+                    <th class="w-8 text-center">GD</th>
+                    <th class="w-10 text-center text-[#00ff85]">PTS</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-[10px]">
+                <template x-for="(team, i) in standings" :key="i">
+                    <tr :class="team.team_name === userTeamName ? 'row-highlight' : ''" class="h-12 hover:bg-white/5 transition-colors">
+                        <td class="text-center font-black text-white/20" x-text="i+1"></td>
+                        
+                        <td class="pl-2 overflow-hidden">
+                            <div class="flex items-center space-x-2">
+                                <img :src="team.logo_url" class="w-5 h-5 rounded-full object-cover flex-shrink-0">
+                                <span class="font-bold uppercase truncate" x-text="team.team_name"></span>
+                            </div>
+                        </td>
+
+                        <td class="text-center text-white/60" x-text="team.played"></td>
+                        <td class="text-center text-white/60" x-text="team.won"></td>
+                        <td class="text-center text-white/60" x-text="team.drawn"></td>
+                        <td class="text-center text-white/60" x-text="team.lost"></td>
+                        
+                        <td class="text-center text-white/80" x-text="team.gs"></td>
+                        <td class="text-center text-white/40" x-text="team.ga"></td>
+
+                        <td class="text-center font-black" 
+                            :class="{
+                                'text-[#00ff85]': team.gd > 0, 
+                                'text-red-500': team.gd < 0, 
+                                'text-white/30': team.gd === 0
+                            }" 
+                            x-text="team.gd > 0 ? '+' + team.gd : team.gd">
+                        </td>
+
+                        <td class="text-center font-black text-[#00ff85] text-xs" x-text="team.points"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 
         <div x-show="activeTab === 'fixtures'" x-transition x-cloak>
             <template x-for="mday in Object.keys(groupedFixtures).sort()" :key="mday">
