@@ -583,37 +583,38 @@
                 }
             },
 
-            async submitScore() {
-    if (!this.scoringFix || !this.leagueId) return;
+             async submitScore() {
+            if (!this.scoringFix || !this.leagueId) return;
 
-    // We use exact names from your screenshot
-    const payload = {
-        league_id: this.leagueId,
-        home_name: this.scoringFix.home_team, 
-        away_name: this.scoringFix.away_team,
-        h_score: parseInt(this.hScore) || 0,
-        a_score: parseInt(this.aScore) || 0,
-        home_logo: this.scoringFix.home_logo,
-        away_logo: this.scoringFix.away_logo
-    };
+            const payload = {
+                league_id: this.leagueId,
+                home_name: this.scoringFix.home_team,
+                away_name: this.scoringFix.away_team,
+                h_score: parseInt(this.hScore) || 0,
+                a_score: parseInt(this.aScore) || 0,
+                home_logo: this.scoringFix.home_logo,
+                away_logo: this.scoringFix.away_logo
+            };
 
-    console.log("Attempting Insert with:", payload);
+            console.log("Attempting Insert with:", payload);
 
-    const { data, error } = await _supabase
-        .from('results')
-        .insert([payload])
-        .select(); // Adding select() helps confirm the return
+            const { data, error } = await _supabase
+                .from('results')
+                .insert([payload])
+                .select();
 
-    if (error) {
-        // THIS ALERT IS CRITICAL - READ IT CAREFULLY
-        alert("SUPABASE ERROR: " + error.message + " | HINT: " + error.hint);
-        console.error("Full Error Object:", error);
-    } else {
-        // If successful, proceed with deletion and refresh
-        await _supabase.from('fixtures').delete().eq('id', this.scoringFix.id);
-        location.reload();
-    }
-}
+            if (error) {
+                alert("SUPABASE ERROR: " + error.message + " | HINT: " + error.hint);
+                console.error("Full Error Object:", error);
+            } else {
+                await _supabase.from('fixtures').delete().eq('id', this.scoringFix.id);
+                location.reload();
+            }
+        } // End of submitScore
+    } // End of Alpine component return object
+} // End of leagueApp function
+</script>
+    
 
                 </script>
     
