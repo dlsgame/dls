@@ -147,9 +147,10 @@
         </div>
 
         <div x-show="activeTab === 'standings'" x-transition x-cloak>
-            <h2 class="text-xl font-black uppercase mb-4 tracking-tighter" style="font-style: normal;">
+            <h2 class="text-3xl font-black uppercase mb-6 tracking-tighter" style="font-family: 'Inter', sans-serif; font-style: normal; color: white;">
     LIVE <span style="color: #00ff85;">STANDINGS</span>
             </h2>
+            
             
     <div class="glass-card rounded-3xl overflow-hidden">
         <table class="w-full table-fixed border-collapse">
@@ -206,6 +207,10 @@
         
 
         <div x-show="activeTab === 'fixtures'" x-transition x-cloak>
+            <h2 class="text-3xl font-black uppercase mb-6 tracking-tighter" style="font-family: 'Inter', sans-serif; font-style: normal; color: white;">
+    UPCOMING<span style="color: #00ff85;">FIXTURES</span>
+</h2>
+
             <template x-for="mday in Object.keys(groupedFixtures).sort()" :key="mday">
                 <div class="mb-4" x-data="{ open: false }">
                     <button @click="open = !open" class="w-full flex justify-between items-center glass-card p-4 rounded-2xl">
@@ -242,6 +247,10 @@
         </div>
 
         <div x-show="activeTab === 'results'" x-transition x-cloak class="space-y-3">
+            <h2 class="text-3xl font-black uppercase mb-6 tracking-tighter" style="font-family: 'Inter', sans-serif; font-style: normal; color: white;">
+    MATCH <span style="color: #00ff85;">RESULTS</span>
+</h2>
+
     <template x-for="res in results" :key="res.id">
         <div class="glass-card relative overflow-hidden rounded-2xl border border-white/5 shadow-lg transition-all"
              :class="{
@@ -286,6 +295,10 @@
         </div>
         
 <div x-show="activeTab === 'insights'" x-transition x-cloak class="space-y-6">
+    <h2 class="text-3xl font-black uppercase mb-6 tracking-tighter" style="font-family: 'Inter', sans-serif; font-style: normal; color: white;">
+    TACTICAL <span style="color: #00ff85;">INSIGHTS</span>
+    </h2>
+    
     
     <div class="glass-card rounded-[2.5rem] p-6 text-center border border-white/5">
         <p class="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-6 text-left px-2">FORM</p>
