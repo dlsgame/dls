@@ -126,23 +126,35 @@
                         <p class="text-lg font-black text-[#00ff85]" x-text="league.prize_pool"></p>
                     </div>
                     <div class="bg-white/5 p-5 rounded-3xl border border-white/5">
-                        <p class="text-[8px] text-white/40 uppercase font-black mb-1">Slots Occupied</p>
+                        <p class="text-[8px] text-white/40 uppercase font-black mb-1">Slots</p>
                         <p class="text-lg font-black text-white" x-text="joinedCount + '/' + league.total_slots"></p>
                     </div>
                 </div>
 
                 <template x-if="!isJoined">
-                    <button @click="requestJoin()" 
-                            :disabled="joinStatus === 'Pending' || joinStatus === 'Requesting'"
-                            :class="{
-                                'bg-[#00ff85] text-[#0a0f1a]': joinStatus === 'Idle',
-                                'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30': joinStatus === 'Pending',
-                                'bg-blue-500 text-white animate-pulse': joinStatus === 'Requesting'
-                            }"
-                            class="w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-widest transition-all">
-                        <span x-text="joinStatus === 'Idle' ? 'Request to Join' : (joinStatus === 'Requesting' ? 'Requesting...' : 'Status: ' + joinStatus)"></span>
-                    </button>
+    <div>
+        <template x-if="!isFull">
+            <button @click="requestJoin()"
+                :disabled="joinStatus === 'Pending' || joinStatus === 'Requesting'"
+                class="w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-widest transition-all active:scale-95"
+                :class="{
+                    'bg-[#00ff85] text-[#0a0f1a]': joinStatus === 'Idle',
+                    'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30': joinStatus === 'Pending',
+                    'bg-blue-500 text-white animate-pulse': joinStatus === 'Requesting'
+                }">
+                <span x-text="joinStatus === 'Idle' ? 'Request to Join' : (joinStatus === 'Pending' ? 'Request Pending' : 'Requesting...')"></span>
+            </button>
+        </template>
+
+        <template x-if="isFull">
+            <div class="w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-widest bg-white/5 text-white/20 border border-white/10 text-center flex items-center justify-center gap-2">
+                ENTRY <span class="text-red-500/40">CLOSED</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </div>
+        </template>
+    </div>
                 </template>
+                
             </div>
         </div>
 
@@ -438,7 +450,11 @@
             isJoined: false,
             joinStatus: 'Idle',
             standings: [],
-            
+            // Add these near 'standings: []' (approx line 440)
+maxTeams: 0,
+currentTeamsCount: 0,
+isFull: false,
+    
             // --- CRITICAL INITIALIZATIONS ---
             results: [],
             groupedFixtures: {},
@@ -448,7 +464,28 @@
             biggestWin: null,
             biggestLoss: null,
             scoringFix: null, hScore: 0, aScore: 0,
+async checkLeagueSlots() {
+    // 1. Get the max slots from the league table
+    const { data: league } = await _supabase
+        .from('leagues')
+        .select('total_slots')
+        .eq('id', this.leagueId)
+        .single();
+    
+    this.maxTeams = league?.slots || 0;
 
+    // 2. Count current teams in the standings table for this league
+    const { count } = await _supabase
+        .from('standings')
+        .select('*', { count: 'exact', head: true })
+        .eq('league_id', this.leagueId);
+    
+    this.currentTeamsCount = count || 0;
+
+    // 3. Determine if entry should be closed
+    this.isFull = this.currentTeamsCount >= this.maxTeams;
+},
+            
             async init() {
                 // Use getSession to prevent random logouts during navigation
                 const { data: { session } } = await _supabase.auth.getSession();
@@ -476,7 +513,9 @@
                         this.fetchMembers(),
                         this.fetchStandings(),
                         this.fetchFixtures(),
-                        this.fetchResults()
+                        this.fetchResults(),
+                        this.checkLeagueSlots()
+                        
                     ]);
                     
                 } catch (e) {
