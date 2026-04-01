@@ -598,7 +598,7 @@
                 if (!error) {
                     await _supabase.from('fixtures').delete().eq('id', this.scoringFix.id);
                     this.scoringFix = null;
-                    this.hScore = 0; this.aScore = 0;
+                    this.hScore =  ; this.aScore =  ;
                     await this.fetchFixtures();
                     await this.fetchResults();
                     await this.fetchStandings();
