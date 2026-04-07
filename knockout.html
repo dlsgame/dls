@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLS26 | Knockout Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
+        
+        /* Bracket Layout */
+        .bracket-container { display: flex; gap: 40px; padding: 20px; overflow-x: auto; scroll-snap-type: x mandatory; }
+        .round-column { flex-shrink: 0; width: 280px; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: space-around; }
+        
+        /* Match Box Styling */
+        .match-box { position: relative; padding: 12px; border-radius: 16px; transition: all 0.3s ease; border-left: 4px solid transparent; }
+        .match-active { border-left-color: #00ff85; box-shadow: 0 4px 20px rgba(0, 255, 133, 0.05); }
+        .team-winner { color: #00ff85; font-weight: 900; }
+        .team-loser { opacity: 0.3; filter: grayscale(1); }
+
+        /* Custom Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="knockoutEngine()" x-init="init()">
+
+    <header class="bg-[#0a0f1a]/80 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button @click="window.history.back()" class="p-2 glass-card rounded-lg text-white/40">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="3"/></svg>
+                </button>
+                <div>
+                    <h1 class="outfit text-xl font-900 uppercase tracking-tighter">Tournament <span class="text-[#00ff85]">Bracket</span></h1>
+                    <p class="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]" x-text="leagueName"></p>
+                </div>
+            </div>
+            <template x-if="isAdmin">
+                <button @click="generateDraw()" class="bg-[#00ff85] text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest">Randomize Draw</button>
+            </template>
+        </div>
+    </header>
+
+    <main class="mt-10">
+        <div class="bracket-container no-scrollbar" x-show="!loading">
+            
+            <template x-for="round in activeRounds" :key="round">
+                <div class="round-column">
+                    <div class="text-center mb-8">
+                        <span class="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]" x-text="round"></span>
+                    </div>
+
+                    <div class="space-y-6 flex flex-col justify-center h-full">
+                        <template x-for="match in getMatchesByRound(round)" :key="match.id">
+                            <div class="glass-card match-box" :class="match.h_score > 0 || match.a_score > 0 ? 'match-active' : ''">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="match.home_logo || 'https://via.placeholder.com/20'" class="w-5 h-5 rounded-full object-cover">
+                                        <span class="text-[11px] font-bold uppercase truncate w-32" 
+                                              :class="match.h_score > match.a_score ? 'team-winner' : (match.a_score > match.h_score ? 'team-loser' : '')"
+                                              x-text="match.home_team || 'TBD'"></span>
+                                    </div>
+                                    <span class="text-xs font-black outfit" x-text="match.h_score"></span>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <img :src="match.away_logo || 'https://via.placeholder.com/20'" class="w-5 h-5 rounded-full object-cover">
+                                        <span class="text-[11px] font-bold uppercase truncate w-32" 
+                                              :class="match.a_score > match.h_score ? 'team-winner' : (match.h_score > match.a_score ? 'team-loser' : '')"
+                                              x-text="match.away_team || 'TBD'"></span>
+                                    </div>
+                                    <span class="text-xs font-black outfit" x-text="match.a_score"></span>
+                                </div>
+
+                                <template x-if="isAdmin && match.home_team && match.away_team">
+                                    <button @click="openScoring(match)" class="absolute -right-2 -top-2 bg-[#00ff85] text-black rounded-full p-1.5 shadow-xl hover:scale-110 transition-transform">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="3"/></svg>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+    </main>
+
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60" x-cloak>
+        <div class="glass-card w-full max-w-xs rounded-[2rem] p-8">
+            <h3 class="outfit font-900 uppercase text-center mb-6 text-sm tracking-widest text-[#00ff85]">Submit Result</h3>
+            <div class="flex items-center justify-between mb-8">
+                <div class="text-center">
+                    <img :src="scoringMatch?.home_logo" class="w-10 h-10 rounded-full mx-auto mb-2 border border-white/10">
+                    <input type="number" x-model="hScore" class="w-14 bg-white/5 border border-white/10 rounded-lg py-2 text-center outfit font-black text-lg focus:border-[#00ff85] outline-none">
+                </div>
+                <span class="font-black text-white/10">VS</span>
+                <div class="text-center">
+                    <img :src="scoringMatch?.away_logo" class="w-10 h-10 rounded-full mx-auto mb-2 border border-white/10">
+                    <input type="number" x-model="aScore" class="w-14 bg-white/5 border border-white/10 rounded-lg py-2 text-center outfit font-black text-lg focus:border-[#00ff85] outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button @click="saveScore()" class="w-full py-4 rounded-xl font-black bg-[#00ff85] text-[#0a0f1a] uppercase tracking-widest text-xs">Confirm Result</button>
+                <button @click="scoringMatch = null" class="w-full py-3 rounded-xl font-bold text-white/30 text-[10px] uppercase">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+        function knockoutEngine() {
+            return {
+                loading: true,
+                leagueId: new URLSearchParams(window.location.search).get('id'),
+                leagueName: '',
+                isAdmin: false,
+                adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+                matches: [],
+                activeRounds: [],
+                scoringMatch: null, hScore: 0, aScore: 0,
+
+                async init() {
+                    const { data: { session } } = await _supabase.auth.getSession();
+                    this.isAdmin = session?.user?.id === this.adminId;
+
+                    await this.fetchLeagueData();
+                    await this.fetchMatches();
+                    this.loading = false;
+                },
+
+                async fetchLeagueData() {
+                    const { data } = await _supabase.from('leagues').select('name').eq('id', this.leagueId).single();
+                    if (data) this.leagueName = data.name;
+                },
+
+                async fetchMatches() {
+                    const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
+                    if (data) {
+                        this.matches = data;
+                        // Identify which rounds exist in this specific bracket
+                        const roundOrder = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
+                        const existingRounds = [...new Set(data.map(m => m.round_name))];
+                        this.activeRounds = roundOrder.filter(r => existingRounds.includes(r));
+                    }
+                },
+
+                getMatchesByRound(round) {
+                    return this.matches.filter(m => m.round_name === round);
+                },
+
+                openScoring(match) {
+                    this.scoringMatch = match;
+                    this.hScore = match.h_score || 0;
+                    this.aScore = match.a_score || 0;
+                },
+
+                async saveScore() {
+                    const winnerName = this.hScore > this.aScore ? this.scoringMatch.home_team : this.scoringMatch.away_team;
+                    const winnerLogo = this.hScore > this.aScore ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
+
+                    // 1. Update current match
+                    const { error } = await _supabase.from('knockouts').update({
+                        h_score: this.hScore,
+                        a_score: this.aScore,
+                        winner_name: winnerName
+                    }).eq('id', this.scoringMatch.id);
+
+                    // 2. Handle Progression
+                    if (!error && this.scoringMatch.winner_next_id) {
+                        const isHomeInNext = this.scoringMatch.next_slot === 'home';
+                        const updateObj = isHomeInNext ? 
+                            { home_team: winnerName, home_logo: winnerLogo } : 
+                            { away_team: winnerName, away_logo: winnerLogo };
+                        
+                        await _supabase.from('knockouts').update(updateObj).eq('id', this.scoringMatch.winner_next_id);
+                    }
+
+                    location.reload();
+                },
+
+                async generateDraw() {
+                    if(!confirm("This will reset the bracket. Continue?")) return;
+                    
+                    // Fetch all approved members
+                    const { data: members } = await _supabase.from('league_members')
+                        .select('team_name, logo_url')
+                        .eq('league_id', this.leagueId)
+                        .eq('status', 'Approved');
+
+                    if (members.length < 2) { alert("Not enough teams!"); return; }
+
+                    // Shuffle and setup first round (example: Quarter-Finals for 8 teams)
+                    let shuffled = members.sort(() => 0.5 - Math.random());
+                    // Logic to insert into 'knockouts' table would go here
+                    alert("Draw logic triggered. Setup your database rows for " + shuffled.length + " teams.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
