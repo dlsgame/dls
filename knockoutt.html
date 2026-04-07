@@ -13,6 +13,18 @@
         body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
         .outfit { font-family: 'Outfit', sans-serif; }
         .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
+        
+        /* Skeleton Shimmer Effect */
+        .shimmer {
+            background: linear-gradient(90deg, #111827 25%, #1a2235 50%, #111827 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
         .bracket-container { display: flex; gap: 60px; padding: 40px 20px; overflow-x: auto; min-height: 80vh; scrollbar-width: none; }
         .bracket-container::-webkit-scrollbar { display: none; }
         .round-column { flex-shrink: 0; width: 280px; display: flex; flex-direction: column; justify-content: space-around; }
@@ -45,8 +57,18 @@
     </header>
 
     <main>
-        <div x-show="loading" class="flex flex-col items-center justify-center h-[60vh]">
-            <div class="w-12 h-12 border-4 border-[#00ff85]/20 border-t-[#00ff85] rounded-full animate-spin"></div>
+        <div x-show="loading" class="bracket-container">
+            <template x-for="i in 3">
+                <div class="round-column">
+                    <div class="h-4 w-24 shimmer rounded-full mx-auto mb-10 opacity-20"></div>
+                    <template x-for="j in 4">
+                        <div class="glass-card p-6 rounded-2xl mb-8 opacity-40">
+                            <div class="h-4 w-full shimmer rounded mb-4"></div>
+                            <div class="h-4 w-full shimmer rounded"></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
         </div>
 
         <div class="bracket-container" x-show="!loading" x-cloak>
@@ -98,36 +120,44 @@
         </div>
     </main>
 
-    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/60" x-cloak>
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80" x-cloak x-transition>
         <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border-[#00ff8540]">
-            <h3 class="outfit font-900 uppercase text-center mb-6 text-xs tracking-widest text-[#00ff85]">Submit CL Scores</h3>
+            <div class="flex justify-between items-center mb-8">
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.home_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.home_team"></p>
+                </div>
+                <div class="px-4 outfit font-900 text-[#00ff85] italic">VS</div>
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.away_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.away_team"></p>
+                </div>
+            </div>
             
             <div class="space-y-4 mb-8">
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1</p>
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 (Score)</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
-                        <span class="text-[10px] font-bold text-white/10">VS</span>
-                        <input type="number" x-model="a1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="h1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
                     </div>
                 </div>
 
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2</p>
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 (Score)</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
-                        <span class="text-[10px] font-bold text-white/10">VS</span>
-                        <input type="number" x-model="a2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="h2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
                     </div>
                 </div>
             </div>
 
-            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px]">Confirm Result</button>
+            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px] shadow-lg shadow-[#00ff8520]">Confirm & Update</button>
             <button @click="scoringMatch = null" class="w-full py-3 text-white/20 font-bold uppercase text-[9px] mt-2">Cancel</button>
         </div>
     </div>
 
-<script>
+    <script>
         const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
         function knockoutEngine() {
@@ -150,7 +180,7 @@
 
                 async fetchMatches() {
                     const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
-                    if (data && data.length > 0) {
+                    if (data) {
                         this.matches = data;
                         const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
                         const existing = [...new Set(data.map(m => m.round_name))];
@@ -159,23 +189,21 @@
                 },
 
                 isFinished(m) {
-                    return (m.h_score + m.h_score_2 + m.a_score + m.a_score_2) > 0;
+                    return (parseFloat(m.h_score) + parseFloat(m.h_score_2) + parseFloat(m.a_score) + parseFloat(m.a_score_2)) > 0;
                 },
 
                 getWinnerStatus(m) {
-                    const hTotal = (m.h_score || 0) + (m.h_score_2 || 0);
-                    const aTotal = (m.a_score || 0) + (m.a_score_2 || 0);
-                    if (hTotal === 0 && aTotal === 0) return null;
-
-                    if (hTotal > aTotal) return 'home';
-                    if (aTotal > hTotal) return 'away';
-
-                    // AWAY GOALS RULE: If aggregate tied, check away goals
-                    // Away goals for Team A (Home in Leg 1) are scored in Leg 2 (a2)
-                    // Away goals for Team B (Away in Leg 1) are scored in Leg 1 (a1)
-                    if (hTotal === aTotal) {
-                        if (m.a1 > m.h2) return 'away'; // Away team scored more away goals in leg 1
-                        if (m.h2 > m.a1) return 'home'; // Home team scored more away goals in leg 2
+                    const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
+                    const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
+                    if (hTot === 0 && aTot === 0) return null;
+                    if (hTot > aTot) return 'home';
+                    if (aTot > hTot) return 'away';
+                    
+                    // Away Goals Rule: Away goals in Leg 1 (a_score) vs Away goals in Leg 2 (h_score_2)
+                    // Note: In Leg 2, the original Home team is now the Away team.
+                    if (hTot === aTot) {
+                        if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
+                        if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
                     }
                     return 'draw';
                 },
@@ -191,25 +219,27 @@
                 },
 
                 async setupTournament() {
-                    if(!confirm("Generate Brackets? Teams from same leagues will not be paired.")) return;
-                    
+                    if(!confirm("Start New Draw? Teams from same leagues will be separated.")) return;
+                    this.loading = true;
+
                     const { data: teams } = await _supabase.from('league_members')
                         .select('team_name, logo_url, previous_league_id')
                         .eq('league_id', this.leagueId)
                         .eq('status', 'Approved');
 
-                    if (!teams || teams.length < 4) return alert("Need at least 4 teams.");
+                    if (!teams || teams.length < 4) {
+                        this.loading = false;
+                        return alert("Need at least 4 approved teams.");
+                    }
 
                     await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
 
-                    // Determine structure
                     const rounds = [];
                     if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
                     if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
                     if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
                     rounds.push({ name: 'Final', m: 1 });
 
-                    // Create match skeletons
                     let nextRoundIds = [];
                     for (let i = rounds.length - 1; i >= 0; i--) {
                         const r = rounds[i];
@@ -226,68 +256,58 @@
                         nextRoundIds = roundMatches;
                     }
 
-                    // STRICT PAIRING LOGIC
-                    let shuffled = teams.sort(() => 0.5 - Math.random());
-                    let paired = [];
-                    let firstRoundMatches = nextRoundIds;
-
-                    while (shuffled.length > 0) {
-                        let home = shuffled.shift();
-                        // Find an away team that is NOT from the same league
-                        let awayIdx = shuffled.findIndex(t => t.previous_league_id !== home.previous_league_id);
+                    // STRICT NEUTRAL PAIRING
+                    let pool = [...teams].sort(() => 0.5 - Math.random());
+                    let finalPairs = [];
+                    
+                    while(pool.length > 1) {
+                        let home = pool.shift();
+                        let awayIdx = pool.findIndex(t => t.previous_league_id !== home.previous_league_id);
                         
-                        // If no different league team exists, just take the first one available
-                        let away = awayIdx !== -1 ? shuffled.splice(awayIdx, 1)[0] : shuffled.shift();
-                        
-                        paired.push({ home, away });
+                        if(awayIdx === -1) awayIdx = 0; // Fallback if impossible
+                        let away = pool.splice(awayIdx, 1)[0];
+                        finalPairs.push({ home, away });
                     }
 
-                    // Update First Round Matches with paired teams
-                    for (let i = 0; i < firstRoundMatches.length; i++) {
-                        const match = firstRoundMatches[i];
-                        const pair = paired[i];
-                        if (pair) {
-                            await _supabase.from('knockouts').update({ 
-                                home_team: pair.home.team_name, home_logo: pair.home.logo_url, 
-                                away_team: pair.away?.team_name || 'BYE', away_logo: pair.away?.logo_url || '' 
-                            }).eq('id', match.id);
-                        }
+                    for (let i = 0; i < nextRoundIds.length; i++) {
+                        if(!finalPairs[i]) break;
+                        await _supabase.from('knockouts').update({ 
+                            home_team: finalPairs[i].home.team_name, home_logo: finalPairs[i].home.logo_url, 
+                            away_team: finalPairs[i].away.team_name, away_logo: finalPairs[i].away.logo_url 
+                        }).eq('id', nextRoundIds[i].id);
                     }
-                    location.reload();
+                    
+                    await this.fetchMatches();
+                    this.loading = false;
                 },
 
                 async saveScore() {
-                    const h1_val = parseInt(this.h1) || 0;
-                    const a1_val = parseInt(this.a1) || 0;
-                    const h2_val = parseInt(this.h2) || 0;
-                    const a2_val = parseInt(this.a2) || 0;
-
-                    const stats = { h_score: h1_val, a_score: a1_val, h_score_2: h2_val, a_score_2: a2_val };
+                    const stats = { h_score: parseInt(this.h1), a_score: parseInt(this.a1), h_score_2: parseInt(this.h2), a_score_2: parseInt(this.a2) };
                     const winSide = this.getWinnerStatus(stats);
                     
                     const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
                     const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
 
-                    // 1. Update Match
+                    // Update Bracket
                     await _supabase.from('knockouts').update(stats).eq('id', this.scoringMatch.id);
 
-                    // 2. Double Entry to Results Table
-                    const resultsPayload = [
-                        { home_name: this.scoringMatch.home_team, h_score: h1_val, away_name: this.scoringMatch.away_team, a_score: a1_val, league_id: this.leagueId }
-                    ];
+                    // Results Table Log
+                    const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
                     if(this.scoringMatch.round_name !== 'Final') {
-                        resultsPayload.push({ home_name: this.scoringMatch.away_team, h_score: a2_val, away_name: this.scoringMatch.home_team, a_score: h2_val, league_id: this.leagueId });
+                        logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
                     }
-                    await _supabase.from('results').insert(resultsPayload);
+                    await _supabase.from('results').insert(logs);
 
-                    // 3. Progress Winner
-                    if (this.scoringMatch.winner_next_id && winSide !== 'draw') {
-                        const progress = this.scoringMatch.next_slot === 'home' ? 
+                    // Progression
+                    if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
+                        const field = this.scoringMatch.next_slot === 'home' ? 
                             { home_team: winnerName, home_logo: winnerLogo } : 
                             { away_team: winnerName, away_logo: winnerLogo };
-                        await _supabase.from('knockouts').update(progress).eq('id', this.scoringMatch.winner_next_id);
+                        await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
                     }
-                    location.reload();
+
+                    this.scoringMatch = null;
+                    await this.fetchMatches(); // Refresh UI immediately
                 }
             }
         }
