@@ -106,48 +106,132 @@
             </div>
         </div>
 
-        <div x-show="activeTab === 'standings'" x-transition x-cloak>
-            <div class="glass-card rounded-3xl overflow-hidden">
-                <table class="w-full table-fixed border-collapse">
-                    <thead class="bg-black/40 text-[7px] font-black uppercase text-white/30 border-b border-white/5">
-                        <tr>
-                            <th class="py-4 w-6 text-center">#</th>
-                            <th class="py-4 text-left pl-2">Club</th>
-                            <th class="w-5 text-center">P</th>
-                            <th class="w-4 text-center">W</th>
-                            <th class="w-4 text-center">D</th>
-                            <th class="w-4 text-center">L</th>
-                            <th class="w-5 text-center text-white/50">GS</th>
-                            <th class="w-5 text-center text-white/50">GA</th>
-                            <th class="w-7 text-center">GD</th>
-                            <th class="w-9 text-center text-[#00ff85]">PTS</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5 text-[9px]">
-                        <template x-for="(team, i) in standings" :key="i">
-                            <tr :class="team.team_name === userTeamName ? 'row-highlight' : ''" class="h-12 hover:bg-white/5 transition-colors">
-                                <td class="text-center font-black text-white/10" x-text="i+1"></td>
-                                <td class="pl-2 overflow-hidden">
-                                    <div class="flex items-center space-x-1.5">
-                                        <img :src="team.logo_url" class="w-4 h-4 rounded-full object-cover bg-white/5">
-                                        <span class="font-bold uppercase truncate" x-text="team.team_name"></span>
-                                    </div>
-                                </td>
-                                <td class="text-center text-white/60" x-text="team.played"></td>
-                                <td class="text-center text-white/40" x-text="team.won"></td>
-                                <td class="text-center text-white/40" x-text="team.drawn"></td>
-                                <td class="text-center text-white/40" x-text="team.lost"></td>
-                                <td class="text-center text-white/70" x-text="team.gs"></td>
-                                <td class="text-center text-white/30" x-text="team.ga"></td>
-                                <td class="text-center font-black" :class="team.gd >= 0 ? 'text-[#00ff85]' : 'text-red-500'" x-text="(team.gd > 0 ? '+' : '') + team.gd"></td>
-                                <td class="text-center font-black text-[#00ff85] text-[11px]" x-text="team.points"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+        <div x-show="activeTab === 'standings'" x-transition x-cloak x-data="championsLeagueEngine()" x-init="init()">
+    
+    <div class="flex justify-between items-end mb-6">
+        <h2 class="text-3xl font-black uppercase" style="font-family: 'Outfit', sans-serif; font-style: normal; letter-spacing: -0.05em; color: white;">
+            <span x-show="leagueStatus !== 'Completed'">LIVE <span style="color: #00ff85;">STANDINGS</span></span>
+            <span x-show="leagueStatus === 'Completed'">CHAMPIONS <span style="color: #00ff85;">LEAGUE</span></span>
+        </h2>
+        
+        <template x-if="isAdmin && leagueStatus === 'Completed' && matches.length === 0">
+            <button @click="generateCL()" class="bg-[#00ff85] text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_15px_rgba(0,255,133,0.4)]">
+                Generate Draw
+            </button>
+        </template>
+    </div>
+
+    <div class="glass-card rounded-3xl overflow-hidden" x-show="leagueStatus !== 'Completed'">
+        <table class="w-full table-fixed border-collapse">
+            <thead class="bg-black/40 text-[7px] font-black uppercase text-white/30 border-b border-white/5">
+                <tr>
+                    <th class="py-4 w-6 text-center">#</th>
+                    <th class="py-4 text-left pl-2">Club</th>
+                    <th class="w-5 text-center">P</th>
+                    <th class="w-4 text-center">W</th>
+                    <th class="w-4 text-center">D</th>
+                    <th class="w-4 text-center">L</th>
+                    <th class="w-5 text-center text-white/50">GS</th>
+                    <th class="w-5 text-center text-white/50">GA</th>
+                    <th class="w-7 text-center">GD</th>
+                    <th class="w-9 text-center text-[#00ff85]">PTS</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-[9px]">
+                <template x-for="(team, i) in standings" :key="i">
+                    <tr :class="team.team_name === userTeamName ? 'row-highlight' : ''" class="h-12 hover:bg-white/5 transition-colors">
+                        <td class="text-center font-black text-white/10" x-text="i+1"></td>
+                        <td class="pl-2 overflow-hidden">
+                            <div class="flex items-center space-x-1.5">
+                                <img :src="team.logo_url" class="w-4 h-4 rounded-full object-cover flex-shrink-0 bg-white/5">
+                                <span class="font-bold uppercase truncate leading-none tracking-tighter" x-text="team.team_name"></span>
+                            </div>
+                        </td>
+                        <td class="text-center text-white/60" x-text="team.played"></td>
+                        <td class="text-center text-white/40" x-text="team.won"></td>
+                        <td class="text-center text-white/40" x-text="team.drawn"></td>
+                        <td class="text-center text-white/40" x-text="team.lost"></td>
+                        <td class="text-center text-white/70" x-text="team.gs"></td>
+                        <td class="text-center text-white/30" x-text="team.ga"></td>
+                        <td class="text-center font-black tracking-tighter" 
+                            :class="{'text-[#00ff85]': team.gd > 0, 'text-red-500': team.gd < 0, 'text-white/20': team.gd === 0}" 
+                            x-text="team.gd > 0 ? '+' + team.gd : (team.gd === 0 ? '0' : team.gd)">
+                        </td>
+                        <td class="text-center font-black text-[#00ff85] text-[11px]" x-text="team.points"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bracket-wrapper overflow-x-auto no-scrollbar py-4" x-show="leagueStatus === 'Completed' && matches.length > 0">
+        <div class="flex gap-8 min-w-max px-4">
+            <template x-for="round in activeRounds" :key="round">
+                <div class="flex flex-col justify-around w-64 space-y-8">
+                    <h3 class="text-center text-[9px] font-black text-white/20 uppercase tracking-[0.4em]" x-text="round"></h3>
+                    
+                    <template x-for="match in getMatchesByRound(round)" :key="match.id">
+                        <div class="glass-card p-4 rounded-2xl border-l-4 relative" :class="isFinished(match) ? 'border-[#00ff85]' : 'border-white/10'">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-bold uppercase truncate w-32" :class="getWinner(match) === 'home' ? 'text-[#00ff85]' : ''" x-text="match.home_team || 'TBD'"></span>
+                                <div class="flex gap-1.5 text-[10px] font-black outfit">
+                                    <span class="text-white/20" x-text="match.h_score"></span>
+                                    <span class="text-white/20" x-text="match.h_score_2"></span>
+                                    <span class="text-[#00ff85] ml-1" x-text="(match.h_score||0) + (match.h_score_2||0)"></span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold uppercase truncate w-32" :class="getWinner(match) === 'away' ? 'text-[#00ff85]' : ''" x-text="match.away_team || 'TBD'"></span>
+                                <div class="flex gap-1.5 text-[10px] font-black outfit">
+                                    <span class="text-white/20" x-text="match.a_score"></span>
+                                    <span class="text-white/20" x-text="match.a_score_2"></span>
+                                    <span class="text-white/40 ml-1" x-text="(match.a_score||0) + (match.a_score_2||0)"></span>
+                                </div>
+                            </div>
+
+                            <template x-if="isAdmin && match.home_team && match.away_team">
+                                <button @click="openScoring(match)" class="absolute -right-2 -top-2 bg-[#00ff85] text-black rounded-full p-1.5 shadow-lg">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2.5"/></svg>
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80" x-cloak>
+        <div class="glass-card w-full max-w-xs rounded-[2rem] p-8 border-[#00ff8530]">
+            <h3 class="outfit font-900 uppercase text-center mb-6 text-[10px] tracking-widest text-[#00ff85]">Submit CL Result</h3>
+            
+            <div class="space-y-4 mb-6">
+                <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <p class="text-[8px] font-black text-center text-white/20 uppercase mb-2">First Leg</p>
+                    <div class="flex justify-around items-center">
+                        <input type="number" x-model="h1" class="w-10 bg-black/40 border border-white/10 rounded-lg text-center py-1 text-sm font-black">
+                        <span class="text-[8px] font-black text-white/10">VS</span>
+                        <input type="number" x-model="a1" class="w-10 bg-black/40 border border-white/10 rounded-lg text-center py-1 text-sm font-black">
+                    </div>
+                </div>
+
+                <div class="bg-white/5 p-3 rounded-xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
+                    <p class="text-[8px] font-black text-center text-white/20 uppercase mb-2">Second Leg</p>
+                    <div class="flex justify-around items-center">
+                        <input type="number" x-model="h2" class="w-10 bg-black/40 border border-white/10 rounded-lg text-center py-1 text-sm font-black">
+                        <span class="text-[8px] font-black text-white/10">VS</span>
+                        <input type="number" x-model="a2" class="w-10 bg-black/40 border border-white/10 rounded-lg text-center py-1 text-sm font-black">
+                    </div>
+                </div>
             </div>
+
+            <button @click="submitCLResult()" class="w-full py-4 rounded-xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px] mb-2">Confirm Result</button>
+            <button @click="scoringMatch = null" class="w-full text-white/30 font-bold uppercase text-[9px]">Cancel</button>
+        </div>
+    </div>
         </div>
 
+        
         <div x-show="activeTab === 'fixtures'" x-transition x-cloak>
             <template x-for="mday in Object.keys(groupedFixtures).sort((a,b) => a-b)" :key="mday">
                 <div class="mb-4" x-data="{ open: true }">
@@ -352,6 +436,100 @@
             biggestWin: null,
             biggestLoss: null,
             scoringFix: null, hScore: 0, aScore: 0,
+            function championsLeagueEngine() {
+    return {
+        leagueId: new URLSearchParams(window.location.search).get('id'),
+        leagueStatus: 'Active',
+        matches: [],
+        activeRounds: [],
+        scoringMatch: null,
+        h1:0, a1:0, h2:0, a2:0,
+        isAdmin: true, // You can link this to your auth logic
+
+        async init() {
+            // 1. Check League Status
+            const { data: league } = await _supabase.from('leagues').select('status').eq('id', this.leagueId).single();
+            if(league) this.leagueStatus = league.status;
+
+            // 2. Fetch CL Matches if any
+            await this.fetchMatches();
+        },
+
+        async fetchMatches() {
+            const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
+            if(data && data.length > 0) {
+                this.matches = data;
+                const roundOrder = ['Quarter-Finals', 'Semi-Finals', 'Final'];
+                const existing = [...new Set(data.map(m => m.round_name))];
+                this.activeRounds = roundOrder.filter(r => existing.includes(r));
+            }
+        },
+
+        async generateCL() {
+            if(!confirm("Qualify Top 4 and Start Champions League?")) return;
+
+            // 1. Pull Top 4 from Standings
+            const { data: qualifiers } = await _supabase.from('standings')
+                .select('team_name, logo_url')
+                .eq('league_id', this.leagueId)
+                .order('points', { ascending: false })
+                .limit(4);
+
+            if(!qualifiers || qualifiers.length < 4) return alert("Need at least 4 teams in standings.");
+
+            // 2. Create Skeleton (simplified for 8 teams total: 4 from here + 4 'Guest' teams)
+            // Logic for winner_next_id as established previously...
+            // Insert Quarter-Finals, Semi-Finals, and Final into 'knockouts'
+            alert("Generating 8-team random bracket...");
+            // [Insert logic from the Universal Generator provided earlier here]
+        },
+
+        getWinner(m) {
+            const hTotal = (m.h_score || 0) + (m.h_score_2 || 0);
+            const aTotal = (m.a_score || 0) + (m.a_score_2 || 0);
+            if(hTotal === 0 && aTotal === 0) return null;
+            
+            if(hTotal > aTotal) return 'home';
+            if(aTotal > hTotal) return 'away';
+
+            // AWAY GOALS RULE: If total tied, check away goals in 2nd leg (a_score_2)
+            if(hTotal === aTotal) {
+                if(m.a_score_2 > m.h_score) return 'away';
+                if(m.h_score > m.a_score_2) return 'home';
+            }
+            return null;
+        },
+
+        isFinished(m) {
+            return (m.h_score + m.h_score_2 + m.a_score + m.a_score_2) > 0;
+        },
+
+        openScoring(match) {
+            this.scoringMatch = match;
+            this.h1 = match.h_score || 0; this.a1 = match.a_score || 0;
+            this.h2 = match.h_score_2 || 0; this.a2 = match.a_score_2 || 0;
+        },
+
+        async submitCLResult() {
+            // 1. Update Knockouts
+            await _supabase.from('knockouts').update({
+                h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2
+            }).eq('id', this.scoringMatch.id);
+
+            // 2. Double Entry to Results Table
+            const resData = [
+                { home_name: this.scoringMatch.home_team, away_name: this.scoringMatch.away_team, h_score: this.h1, a_score: this.a1, league_id: this.leagueId },
+                { home_name: this.scoringMatch.away_team, away_name: this.scoringMatch.home_team, h_score: this.a2, a_score: this.h2, league_id: this.leagueId }
+            ];
+            await _supabase.from('results').insert(resData);
+
+            // 3. Progress Winner logic...
+            location.reload();
+        },
+
+        getMatchesByRound(round) { return this.matches.filter(m => m.round_name === round); }
+    }
+                 }
 
             async init() {
                 const { data: { session } } = await _supabase.auth.getSession();
