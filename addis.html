@@ -408,7 +408,6 @@
             </button>
         </template>
     </nav>
-
 <script>
     const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
@@ -437,13 +436,13 @@
             results: [],
             groupedResults: {},
             groupedFixtures: {},
-            scoringFix: null, // For regular season matches
+            scoringFix: null, 
             hScore: 0, aScore: 0,
 
-            // --- Champions League / Knockout State ---
+            // --- Champions League State ---
             clMatches: [],
             activeRounds: [],
-            scoringMatch: null, // For knockout matches
+            scoringMatch: null, 
             h1: 0, a1: 0, h2: 0, a2: 0,
 
             // --- Initialization ---
@@ -455,21 +454,19 @@
                 this.isAdmin = (this.user.id === this.adminId);
 
                 try {
-                    // Get User Data
                     const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).single();
                     if(ui) {
                         this.userData = ui;
                         this.userTeamName = ui.team_name;
                     }
 
-                    // Load all data in parallel
                     await Promise.all([
                         this.fetchLeagueData(),
                         this.fetchMembers(),
                         this.fetchStandings(),
                         this.fetchFixtures(),
                         this.fetchResults(),
-                        this.fetchCLMatches() // Initialize CL data
+                        this.fetchCLMatches() 
                     ]);
                     
                 } catch (e) {
@@ -479,7 +476,6 @@
                 }
             },
 
-            // --- Data Fetching ---
             async fetchLeagueData() {
                 const { data } = await _supabase.from('leagues').select('*').eq('id', this.leagueId).single();
                 if (data) {
@@ -525,7 +521,6 @@
                 }
             },
 
-            // --- Champions League Specific Logic ---
             async fetchCLMatches() {
                 const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
                 if(data && data.length > 0) {
@@ -536,28 +531,83 @@
                 }
             },
 
+            // --- Champions League Generation ---
             async generateCL() {
-                if(!confirm("Qualify Top 4 and Start Champions League?")) return;
+                if(!confirm("This will pull top 4 from all completed leagues and generate a bracket. Proceed?")) return;
 
-                // 1. Pull Top 4 from Standings
-                const qualifiers = this.standings.slice(0, 4);
-                if(qualifiers.length < 4) return alert("Need at least 4 teams in standings.");
+                const { data: finishedLeagues } = await _supabase.from('leagues').select('id, name').eq('status', 'Completed');
+                let allQualifiers = [];
 
-                // 2. Here you would trigger your Bracket Skeleton Generation logic
-                alert("Generating bracket for: " + qualifiers.map(t => t.team_name).join(", "));
-                
-                // Logic to insert rows into 'knockouts' table goes here...
+                if (finishedLeagues) {
+                    for (const lg of finishedLeagues) {
+                        const { data: topTeams } = await _supabase.from('standings')
+                            .select('team_name, logo_url, league_id')
+                            .eq('league_id', lg.id)
+                            .order('points', { ascending: false }).limit(4);
+                        if (topTeams) allQualifiers.push(...topTeams);
+                    }
+                }
+
+                if (allQualifiers.length < 8) {
+                    alert(`Only ${allQualifiers.length} teams qualified. Need 8 for Quarter-Finals.`);
+                    return;
+                }
+
+                const drawPool = allQualifiers.sort(() => 0.5 - Math.random());
+                await this.createKnockoutStructure(drawPool);
             },
 
+            async createKnockoutStructure(teams) {
+                const rounds = [
+                    { name: 'Quarter-Finals', count: 4 },
+                    { name: 'Semi-Finals', count: 2 },
+                    { name: 'Final', count: 1 }
+                ];
+
+                let nextRoundMatchIds = [];
+
+                for (let i = rounds.length - 1; i >= 0; i--) {
+                    const round = rounds[i];
+                    const currentRoundCreated = [];
+
+                    for (let j = 0; j < round.count; j++) {
+                        const matchData = {
+                            league_id: this.leagueId,
+                            round_name: round.name,
+                            match_group: j + 1,
+                            h_score: 0, a_score: 0, h_score_2: 0, a_score_2: 0
+                        };
+
+                        if (nextRoundMatchIds.length > 0) {
+                            const nextIndex = Math.floor(j / 2);
+                            matchData.winner_next_id = nextRoundMatchIds[nextIndex].id;
+                            matchData.next_slot = (j % 2 === 0) ? 'home' : 'away';
+                        }
+
+                        const { data } = await _supabase.from('knockouts').insert([matchData]).select().single();
+                        currentRoundCreated.push(data);
+                    }
+                    nextRoundMatchIds = currentRoundCreated;
+                }
+
+                for (const match of nextRoundMatchIds) {
+                    const home = teams.pop();
+                    const away = teams.pop();
+                    await _supabase.from('knockouts').update({
+                        home_team: home.team_name, home_logo: home.logo_url,
+                        away_team: away.team_name, away_logo: away.logo_url
+                    }).eq('id', match.id);
+                }
+                location.reload();
+            },
+
+            // --- Calculation & Progression ---
             getWinner(m) {
                 const hTotal = (m.h_score || 0) + (m.h_score_2 || 0);
                 const aTotal = (m.a_score || 0) + (m.a_score_2 || 0);
                 if(hTotal === 0 && aTotal === 0) return null;
-                
                 if(hTotal > aTotal) return 'home';
                 if(aTotal > hTotal) return 'away';
-
-                // AWAY GOALS RULE
                 if(hTotal === aTotal) {
                     if(m.a_score_2 > m.h_score) return 'away';
                     if(m.h_score > m.a_score_2) return 'home';
@@ -565,7 +615,6 @@
                 return null;
             },
 
-            // --- Scoring Modals ---
             openScoring(match) {
                 this.scoringMatch = match;
                 this.h1 = match.h_score || 0; this.a1 = match.a_score || 0;
@@ -574,118 +623,42 @@
 
             async submitCLResult() {
                 if(!this.scoringMatch) return;
+                
+                const winSide = this.getWinner({h_score: parseInt(this.h1), a_score: parseInt(this.a1), h_score_2: parseInt(this.h2), a_score_2: parseInt(this.a2)});
+                const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
+                const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
 
-                // 1. Update Knockouts Table
+                // 1. Update Match
                 await _supabase.from('knockouts').update({
                     h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2
                 }).eq('id', this.scoringMatch.id);
 
-                // 2. Insert into Results Table (Both Legs)
+                // 2. Progression Logic
+                if (this.scoringMatch.winner_next_id && winSide) {
+                    const updateField = this.scoringMatch.next_slot === 'home' ? 
+                        { home_team: winnerName, home_logo: winnerLogo } : 
+                        { away_team: winnerName, away_logo: winnerLogo };
+                    
+                    await _supabase.from('knockouts').update(updateField).eq('id', this.scoringMatch.winner_next_id);
+                }
+
+                // 3. Double-entry into results table
                 const resData = [
-                    { home_name: this.scoringMatch.home_team, away_name: this.scoringMatch.away_team, h_score: this.h1, a_score: this.a1, league_id: this.leagueId, matchday: 99 },
-                    { home_name: this.scoringMatch.away_team, away_name: this.scoringMatch.home_team, h_score: this.h2, a_score: this.a2, league_id: this.leagueId, matchday: 99 }
+                    { home_name: this.scoringMatch.home_team, away_name: this.scoringMatch.away_team, h_score: this.h1, a_score: this.a1, league_id: this.leagueId },
+                    { home_name: this.scoringMatch.away_team, away_name: this.scoringMatch.home_team, h_score: this.h2, a_score: this.a2, league_id: this.leagueId }
                 ];
                 await _supabase.from('results').insert(resData);
 
                 location.reload();
             },
 
-            // --- UI Helpers ---
             getMatchesByRound(round) { 
                 return this.clMatches.filter(m => m.round_name === round); 
             }
         }
-        async generateCL() {
-    // 1. Get all leagues that are marked as 'Completed'
-    const { data: finishedLeagues } = await _supabase
-        .from('leagues')
-        .select('id, name')
-        .eq('status', 'Completed');
-
-    let allQualifiers = [];
-
-    // 2. Loop through each finished league and grab its Top 4
-    for (const lg of finishedLeagues) {
-        const { data: topTeams } = await _supabase
-            .from('standings')
-            .select('team_name, logo_url, league_id')
-            .eq('league_id', lg.id)
-            .order('points', { ascending: false })
-            .order('gd', { ascending: false })
-            .limit(4);
-        
-        if (topTeams) allQualifiers.push(...topTeams);
-    }
-
-    if (allQualifiers.length < 8) {
-        alert(`Only ${allQualifiers.length} teams qualified. You need at least 8 for a Quarter-Final start.`);
-        return;
-    }
-
-    // 3. Shuffle the entire pool for a random draw
-    const drawPool = allQualifiers.sort(() => 0.5 - Math.random());
-    
-    // 4. Proceed to generate the actual fixtures
-    await this.createKnockoutStructure(drawPool);
-            }
-        async createKnockoutStructure(teams) {
-    const totalTeams = teams.length;
-    // Determine rounds: 8 teams = Quarter-Finals (4 matches)
-    const rounds = [
-        { name: 'Quarter-Finals', count: 4 },
-        { name: 'Semi-Finals', count: 2 },
-        { name: 'Final', count: 1 }
-    ];
-
-    let nextRoundMatchIds = [];
-
-    // Work BACKWARDS from the Final to the Quarter-Finals
-    for (let i = rounds.length - 1; i >= 0; i--) {
-        const round = rounds[i];
-        const currentRoundCreated = [];
-
-        for (let j = 0; j < round.count; j++) {
-            const matchData = {
-                league_id: this.leagueId, // The "Master" CL League ID
-                round_name: round.name,
-                match_group: j + 1,
-                h_score: 0, a_score: 0, h_score_2: 0, a_score_2: 0
-            };
-
-            // Link to the next match in the following round
-            if (nextRoundMatchIds.length > 0) {
-                const nextIndex = Math.floor(j / 2);
-                matchData.winner_next_id = nextRoundMatchIds[nextIndex].id;
-                matchData.next_slot = (j % 2 === 0) ? 'home' : 'away';
-            }
-
-            const { data } = await _supabase.from('knockouts').insert([matchData]).select().single();
-            currentRoundCreated.push(data);
-        }
-        nextRoundMatchIds = currentRoundCreated;
-    }
-
-    // Finally, take the first round (Quarter-Finals) and insert the teams
-    // Quarter-Finals are the last 'nextRoundMatchIds' in the loop above
-    for (const match of nextRoundMatchIds) {
-        const home = teams.pop();
-        const away = teams.pop();
-        
-        await _supabase.from('knockouts').update({
-            home_team: home.team_name,
-            home_logo: home.logo_url,
-            away_team: away.team_name,
-            away_logo: away.logo_url
-        }).eq('id', match.id);
-    }
-
-    alert("Champions League Bracket Generated!");
-    location.reload();
-    }
-            
     }
             </script>
     
-    
+
 </body>
 </html>
