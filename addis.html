@@ -595,6 +595,94 @@
                 return this.clMatches.filter(m => m.round_name === round); 
             }
         }
+        async generateCL() {
+    // 1. Get all leagues that are marked as 'Completed'
+    const { data: finishedLeagues } = await _supabase
+        .from('leagues')
+        .select('id, name')
+        .eq('status', 'Completed');
+
+    let allQualifiers = [];
+
+    // 2. Loop through each finished league and grab its Top 4
+    for (const lg of finishedLeagues) {
+        const { data: topTeams } = await _supabase
+            .from('standings')
+            .select('team_name, logo_url, league_id')
+            .eq('league_id', lg.id)
+            .order('points', { ascending: false })
+            .order('gd', { ascending: false })
+            .limit(4);
+        
+        if (topTeams) allQualifiers.push(...topTeams);
+    }
+
+    if (allQualifiers.length < 8) {
+        alert(`Only ${allQualifiers.length} teams qualified. You need at least 8 for a Quarter-Final start.`);
+        return;
+    }
+
+    // 3. Shuffle the entire pool for a random draw
+    const drawPool = allQualifiers.sort(() => 0.5 - Math.random());
+    
+    // 4. Proceed to generate the actual fixtures
+    await this.createKnockoutStructure(drawPool);
+            }
+        async createKnockoutStructure(teams) {
+    const totalTeams = teams.length;
+    // Determine rounds: 8 teams = Quarter-Finals (4 matches)
+    const rounds = [
+        { name: 'Quarter-Finals', count: 4 },
+        { name: 'Semi-Finals', count: 2 },
+        { name: 'Final', count: 1 }
+    ];
+
+    let nextRoundMatchIds = [];
+
+    // Work BACKWARDS from the Final to the Quarter-Finals
+    for (let i = rounds.length - 1; i >= 0; i--) {
+        const round = rounds[i];
+        const currentRoundCreated = [];
+
+        for (let j = 0; j < round.count; j++) {
+            const matchData = {
+                league_id: this.leagueId, // The "Master" CL League ID
+                round_name: round.name,
+                match_group: j + 1,
+                h_score: 0, a_score: 0, h_score_2: 0, a_score_2: 0
+            };
+
+            // Link to the next match in the following round
+            if (nextRoundMatchIds.length > 0) {
+                const nextIndex = Math.floor(j / 2);
+                matchData.winner_next_id = nextRoundMatchIds[nextIndex].id;
+                matchData.next_slot = (j % 2 === 0) ? 'home' : 'away';
+            }
+
+            const { data } = await _supabase.from('knockouts').insert([matchData]).select().single();
+            currentRoundCreated.push(data);
+        }
+        nextRoundMatchIds = currentRoundCreated;
+    }
+
+    // Finally, take the first round (Quarter-Finals) and insert the teams
+    // Quarter-Finals are the last 'nextRoundMatchIds' in the loop above
+    for (const match of nextRoundMatchIds) {
+        const home = teams.pop();
+        const away = teams.pop();
+        
+        await _supabase.from('knockouts').update({
+            home_team: home.team_name,
+            home_logo: home.logo_url,
+            away_team: away.team_name,
+            away_logo: away.logo_url
+        }).eq('id', match.id);
+    }
+
+    alert("Champions League Bracket Generated!");
+    location.reload();
+    }
+            
     }
             </script>
     
