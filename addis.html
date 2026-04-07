@@ -414,6 +414,7 @@
 
     function leagueApp() {
         return {
+            // --- Core State ---
             loading: true,
             activeTab: 'overview',
             leagueId: new URLSearchParams(window.location.search).get('id'),
@@ -422,115 +423,30 @@
             user: null,
             userData: null,
             league: {},
+            leagueStatus: 'Active',
+            
+            // --- Standings & Members ---
             joinedCount: 0,
             isJoined: false,
             isFull: false,
             joinStatus: 'Idle',
             standings: [],
+            userTeamName: '',
+            
+            // --- Fixtures & Results ---
             results: [],
             groupedResults: {},
             groupedFixtures: {},
-            userTeamName: '',
-            userStats: { gs: 0, ga: 0 },
-            userForm: [],
-            biggestWin: null,
-            biggestLoss: null,
-            scoringFix: null, hScore: 0, aScore: 0,
-            function championsLeagueEngine() {
-    return {
-        leagueId: new URLSearchParams(window.location.search).get('id'),
-        leagueStatus: 'Active',
-        matches: [],
-        activeRounds: [],
-        scoringMatch: null,
-        h1:0, a1:0, h2:0, a2:0,
-        isAdmin: true, // You can link this to your auth logic
+            scoringFix: null, // For regular season matches
+            hScore: 0, aScore: 0,
 
-        async init() {
-            // 1. Check League Status
-            const { data: league } = await _supabase.from('leagues').select('status').eq('id', this.leagueId).single();
-            if(league) this.leagueStatus = league.status;
+            // --- Champions League / Knockout State ---
+            clMatches: [],
+            activeRounds: [],
+            scoringMatch: null, // For knockout matches
+            h1: 0, a1: 0, h2: 0, a2: 0,
 
-            // 2. Fetch CL Matches if any
-            await this.fetchMatches();
-        },
-
-        async fetchMatches() {
-            const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
-            if(data && data.length > 0) {
-                this.matches = data;
-                const roundOrder = ['Quarter-Finals', 'Semi-Finals', 'Final'];
-                const existing = [...new Set(data.map(m => m.round_name))];
-                this.activeRounds = roundOrder.filter(r => existing.includes(r));
-            }
-        },
-
-        async generateCL() {
-            if(!confirm("Qualify Top 4 and Start Champions League?")) return;
-
-            // 1. Pull Top 4 from Standings
-            const { data: qualifiers } = await _supabase.from('standings')
-                .select('team_name, logo_url')
-                .eq('league_id', this.leagueId)
-                .order('points', { ascending: false })
-                .limit(4);
-
-            if(!qualifiers || qualifiers.length < 4) return alert("Need at least 4 teams in standings.");
-
-            // 2. Create Skeleton (simplified for 8 teams total: 4 from here + 4 'Guest' teams)
-            // Logic for winner_next_id as established previously...
-            // Insert Quarter-Finals, Semi-Finals, and Final into 'knockouts'
-            alert("Generating 8-team random bracket...");
-            // [Insert logic from the Universal Generator provided earlier here]
-        },
-
-        getWinner(m) {
-            const hTotal = (m.h_score || 0) + (m.h_score_2 || 0);
-            const aTotal = (m.a_score || 0) + (m.a_score_2 || 0);
-            if(hTotal === 0 && aTotal === 0) return null;
-            
-            if(hTotal > aTotal) return 'home';
-            if(aTotal > hTotal) return 'away';
-
-            // AWAY GOALS RULE: If total tied, check away goals in 2nd leg (a_score_2)
-            if(hTotal === aTotal) {
-                if(m.a_score_2 > m.h_score) return 'away';
-                if(m.h_score > m.a_score_2) return 'home';
-            }
-            return null;
-        },
-
-        isFinished(m) {
-            return (m.h_score + m.h_score_2 + m.a_score + m.a_score_2) > 0;
-        },
-
-        openScoring(match) {
-            this.scoringMatch = match;
-            this.h1 = match.h_score || 0; this.a1 = match.a_score || 0;
-            this.h2 = match.h_score_2 || 0; this.a2 = match.a_score_2 || 0;
-        },
-
-        async submitCLResult() {
-            // 1. Update Knockouts
-            await _supabase.from('knockouts').update({
-                h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2
-            }).eq('id', this.scoringMatch.id);
-
-            // 2. Double Entry to Results Table
-            const resData = [
-                { home_name: this.scoringMatch.home_team, away_name: this.scoringMatch.away_team, h_score: this.h1, a_score: this.a1, league_id: this.leagueId },
-                { home_name: this.scoringMatch.away_team, away_name: this.scoringMatch.home_team, h_score: this.a2, a_score: this.h2, league_id: this.leagueId }
-            ];
-            await _supabase.from('results').insert(resData);
-
-            // 3. Progress Winner logic...
-            location.reload();
-        },
-
-        getMatchesByRound(round) { return this.matches.filter(m => m.round_name === round); }
-    }
-                 }
-
+            // --- Initialization ---
             async init() {
                 const { data: { session } } = await _supabase.auth.getSession();
                 if (!session) { window.location.href = 'signin.html'; return; }
@@ -539,18 +455,21 @@
                 this.isAdmin = (this.user.id === this.adminId);
 
                 try {
+                    // Get User Data
                     const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).single();
                     if(ui) {
                         this.userData = ui;
                         this.userTeamName = ui.team_name;
                     }
 
+                    // Load all data in parallel
                     await Promise.all([
                         this.fetchLeagueData(),
                         this.fetchMembers(),
                         this.fetchStandings(),
                         this.fetchFixtures(),
-                        this.fetchResults()
+                        this.fetchResults(),
+                        this.fetchCLMatches() // Initialize CL data
                     ]);
                     
                 } catch (e) {
@@ -560,10 +479,12 @@
                 }
             },
 
+            // --- Data Fetching ---
             async fetchLeagueData() {
                 const { data } = await _supabase.from('leagues').select('*').eq('id', this.leagueId).single();
                 if (data) {
                     this.league = data;
+                    this.leagueStatus = data.status;
                     this.isFull = this.joinedCount >= data.total_slots;
                 }
             },
@@ -571,7 +492,7 @@
             async fetchMembers() {
                 const { data, count } = await _supabase.from('league_members').select('*', { count: 'exact' }).eq('league_id', this.leagueId);
                 this.joinedCount = count || 0;
-                const me = data.find(m => m.user_id === this.user.id);
+                const me = data?.find(m => m.user_id === this.user.id);
                 if (me) {
                     this.joinStatus = me.status;
                     if (me.status === 'Approved') this.isJoined = true;
@@ -594,97 +515,89 @@
             },
 
             async fetchResults() {
-                const { data } = await _supabase.from('results').select('*').eq('league_id', this.leagueId).order('matchday', { ascending: false }).order('created_at', { ascending: false });
+                const { data } = await _supabase.from('results').select('*').eq('league_id', this.leagueId).order('created_at', { ascending: false });
                 if (data) {
                     this.results = data;
                     this.groupedResults = data.reduce((acc, res) => {
                         (acc[res.matchday] = acc[res.matchday] || []).push(res);
                         return acc;
                     }, {});
-                    this.calcInsights();
                 }
             },
 
-            calcInsights() {
-                if (!this.userTeamName) return;
-                
-                let gs = 0, ga = 0, form = [];
-                let bWin = null, bLoss = null;
-                let maxWinDiff = -1, maxLossDiff = -1;
-
-                // Sort results by creation (latest first for form)
-                const sortedForForm = [...this.results].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-                
-                const myHistory = sortedForForm.filter(r => r.home_name === this.userTeamName || r.away_name === this.userTeamName);
-
-                myHistory.forEach((r, idx) => {
-                    const isHome = r.home_name === this.userTeamName;
-                    const myS = isHome ? r.h_score : r.a_score;
-                    const opS = isHome ? r.a_score : r.h_score;
-                    const diff = myS - opS;
-
-                    gs += myS; ga += opS;
-
-                    // Form Logic (Last 5)
-                    if (form.length < 5) {
-                        form.push(myS > opS ? 'W' : myS === opS ? 'D' : 'L');
-                    }
-
-                    // Records Logic
-                    if (diff > 0 && diff > maxWinDiff) {
-                        maxWinDiff = diff;
-                        bWin = r;
-                    }
-                    if (diff < 0 && Math.abs(diff) > maxLossDiff) {
-                        maxLossDiff = Math.abs(diff);
-                        bLoss = r;
-                    }
-                });
-
-                this.userStats = { gs, ga };
-                this.userForm = form.reverse(); // Reverse so latest is on the right
-                this.biggestWin = bWin;
-                this.biggestLoss = bLoss;
-            },
-
-            async submitScore() {
-                if (!this.scoringFix) return;
-                const payload = {
-                    league_id: this.leagueId,
-                    matchday: this.scoringFix.matchday,
-                    home_name: this.scoringFix.home_team,
-                    away_name: this.scoringFix.away_team,
-                    h_score: parseInt(this.hScore),
-                    a_score: parseInt(this.aScore),
-                    home_logo: this.scoringFix.home_logo,
-                    away_logo: this.scoringFix.away_logo
-                };
-
-                const { error } = await _supabase.from('results').insert([payload]);
-                if (!error) {
-                    await _supabase.from('fixtures').delete().eq('id', this.scoringFix.id);
-                    location.reload();
-                } else {
-                    alert(error.message);
+            // --- Champions League Specific Logic ---
+            async fetchCLMatches() {
+                const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
+                if(data && data.length > 0) {
+                    this.clMatches = data;
+                    const roundOrder = ['Quarter-Finals', 'Semi-Finals', 'Final'];
+                    const existing = [...new Set(data.map(m => m.round_name))];
+                    this.activeRounds = roundOrder.filter(r => existing.includes(r));
                 }
             },
 
-            async requestJoin() {
-                if (this.joinStatus === 'Requesting') return;
-                this.joinStatus = 'Requesting';
-                const { error } = await _supabase.from('league_members').insert([{
-                    user_id: this.user.id,
-                    league_id: this.leagueId,
-                    team_name: this.userData?.team_name,
-                    logo_url: this.userData?.logo_url,
-                    email: this.user.email,
-                    status: 'Pending'
-                }]);
-                if (error) { this.joinStatus = 'Idle'; alert(error.message); } 
-                else { this.joinStatus = 'Pending'; }
+            async generateCL() {
+                if(!confirm("Qualify Top 4 and Start Champions League?")) return;
+
+                // 1. Pull Top 4 from Standings
+                const qualifiers = this.standings.slice(0, 4);
+                if(qualifiers.length < 4) return alert("Need at least 4 teams in standings.");
+
+                // 2. Here you would trigger your Bracket Skeleton Generation logic
+                alert("Generating bracket for: " + qualifiers.map(t => t.team_name).join(", "));
+                
+                // Logic to insert rows into 'knockouts' table goes here...
+            },
+
+            getWinner(m) {
+                const hTotal = (m.h_score || 0) + (m.h_score_2 || 0);
+                const aTotal = (m.a_score || 0) + (m.a_score_2 || 0);
+                if(hTotal === 0 && aTotal === 0) return null;
+                
+                if(hTotal > aTotal) return 'home';
+                if(aTotal > hTotal) return 'away';
+
+                // AWAY GOALS RULE
+                if(hTotal === aTotal) {
+                    if(m.a_score_2 > m.h_score) return 'away';
+                    if(m.h_score > m.a_score_2) return 'home';
+                }
+                return null;
+            },
+
+            // --- Scoring Modals ---
+            openScoring(match) {
+                this.scoringMatch = match;
+                this.h1 = match.h_score || 0; this.a1 = match.a_score || 0;
+                this.h2 = match.h_score_2 || 0; this.a2 = match.a_score_2 || 0;
+            },
+
+            async submitCLResult() {
+                if(!this.scoringMatch) return;
+
+                // 1. Update Knockouts Table
+                await _supabase.from('knockouts').update({
+                    h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2
+                }).eq('id', this.scoringMatch.id);
+
+                // 2. Insert into Results Table (Both Legs)
+                const resData = [
+                    { home_name: this.scoringMatch.home_team, away_name: this.scoringMatch.away_team, h_score: this.h1, a_score: this.a1, league_id: this.leagueId, matchday: 99 },
+                    { home_name: this.scoringMatch.away_team, away_name: this.scoringMatch.home_team, h_score: this.h2, a_score: this.a2, league_id: this.leagueId, matchday: 99 }
+                ];
+                await _supabase.from('results').insert(resData);
+
+                location.reload();
+            },
+
+            // --- UI Helpers ---
+            getMatchesByRound(round) { 
+                return this.clMatches.filter(m => m.round_name === round); 
             }
         }
     }
-</script>
+            </script>
+    
+    
 </body>
 </html>
