@@ -18,7 +18,7 @@
         .round-column { flex-shrink: 0; width: 280px; display: flex; flex-direction: column; justify-content: space-around; }
         .match-box { position: relative; padding: 16px; border-radius: 20px; border-left: 4px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
         .match-active { border-left-color: #00ff85; background: rgba(0, 255, 133, 0.03); }
-        .team-winner { color: #00ff85; font-weight: 900; }
+        .team-winner { color: #00ff85 !important; font-weight: 900; }
         [x-cloak] { display: none !important; }
     </style>
 </head>
@@ -61,7 +61,7 @@
                             <div class="flex justify-between items-center mb-3">
                                 <div class="flex items-center gap-3">
                                     <img :src="match.home_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
-                                    <span class="text-[11px] font-bold uppercase truncate w-28" 
+                                    <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
                                           :class="getWinnerStatus(match) === 'home' ? 'team-winner' : ''"
                                           x-text="match.home_team || 'TBD'"></span>
                                 </div>
@@ -75,7 +75,7 @@
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center gap-3">
                                     <img :src="match.away_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
-                                    <span class="text-[11px] font-bold uppercase truncate w-28" 
+                                    <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
                                           :class="getWinnerStatus(match) === 'away' ? 'team-winner' : ''"
                                           x-text="match.away_team || 'TBD'"></span>
                                 </div>
@@ -104,20 +104,20 @@
             
             <div class="space-y-4 mb-8">
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 (At Home)</p>
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl">
-                        <span class="text-[10px] font-bold text-white/10">-</span>
-                        <input type="number" x-model="a1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl">
+                        <input type="number" x-model="h1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
+                        <span class="text-[10px] font-bold text-white/10">VS</span>
+                        <input type="number" x-model="a1" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
                     </div>
                 </div>
 
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 (Away)</p>
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl">
-                        <span class="text-[10px] font-bold text-white/10">-</span>
-                        <input type="number" x-model="a2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl">
+                        <input type="number" x-model="h2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
+                        <span class="text-[10px] font-bold text-white/10">VS</span>
+                        <input type="number" x-model="a2" class="w-14 bg-black/40 border border-white/10 rounded-xl py-2 text-center outfit font-black text-xl outline-none focus:border-[#00ff85]">
                     </div>
                 </div>
             </div>
@@ -127,7 +127,7 @@
         </div>
     </div>
 
-    <script>
+<script>
         const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
         function knockoutEngine() {
@@ -170,11 +170,12 @@
                     if (hTotal > aTotal) return 'home';
                     if (aTotal > hTotal) return 'away';
 
-                    // AWAY GOALS RULE: If aggregate tied, check away goals in 2nd leg
-                    // a_score_2 (Away team playing at Home's stadium)
+                    // AWAY GOALS RULE: If aggregate tied, check away goals
+                    // Away goals for Team A (Home in Leg 1) are scored in Leg 2 (a2)
+                    // Away goals for Team B (Away in Leg 1) are scored in Leg 1 (a1)
                     if (hTotal === aTotal) {
-                        if (m.a_score_2 > m.h_score) return 'away';
-                        if (m.h_score > m.a_score_2) return 'home';
+                        if (m.a1 > m.h2) return 'away'; // Away team scored more away goals in leg 1
+                        if (m.h2 > m.a1) return 'home'; // Home team scored more away goals in leg 2
                     }
                     return 'draw';
                 },
@@ -197,17 +198,18 @@
                         .eq('league_id', this.leagueId)
                         .eq('status', 'Approved');
 
-                    if (!teams || teams.length < 4) return alert("Min 4 approved teams required.");
+                    if (!teams || teams.length < 4) return alert("Need at least 4 teams.");
 
                     await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
 
+                    // Determine structure
                     const rounds = [];
                     if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
                     if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
                     if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
                     rounds.push({ name: 'Final', m: 1 });
 
-                    // Create Structure
+                    // Create match skeletons
                     let nextRoundIds = [];
                     for (let i = rounds.length - 1; i >= 0; i--) {
                         const r = rounds[i];
@@ -224,33 +226,30 @@
                         nextRoundIds = roundMatches;
                     }
 
-                    // Smart Pairing Logic: No same-league matchups
-                    let potA = []; let potB = [];
-                    const groups = {};
-                    teams.forEach(t => {
-                        const lid = t.previous_league_id || 'unknown';
-                        if(!groups[lid]) groups[lid] = [];
-                        groups[lid].push(t);
-                    });
+                    // STRICT PAIRING LOGIC
+                    let shuffled = teams.sort(() => 0.5 - Math.random());
+                    let paired = [];
+                    let firstRoundMatches = nextRoundIds;
 
-                    // Distribute across Pots
-                    Object.values(groups).forEach(grp => {
-                        grp.forEach((team, idx) => {
-                            if(idx % 2 === 0) potA.push(team);
-                            else potB.push(team);
-                        });
-                    });
+                    while (shuffled.length > 0) {
+                        let home = shuffled.shift();
+                        // Find an away team that is NOT from the same league
+                        let awayIdx = shuffled.findIndex(t => t.previous_league_id !== home.previous_league_id);
+                        
+                        // If no different league team exists, just take the first one available
+                        let away = awayIdx !== -1 ? shuffled.splice(awayIdx, 1)[0] : shuffled.shift();
+                        
+                        paired.push({ home, away });
+                    }
 
-                    potA = potA.sort(() => 0.5 - Math.random());
-                    potB = potB.sort(() => 0.5 - Math.random());
-
-                    for (let match of nextRoundIds) {
-                        const h = potA.pop() || potB.pop();
-                        const a = potB.pop() || potA.pop();
-                        if (h) {
+                    // Update First Round Matches with paired teams
+                    for (let i = 0; i < firstRoundMatches.length; i++) {
+                        const match = firstRoundMatches[i];
+                        const pair = paired[i];
+                        if (pair) {
                             await _supabase.from('knockouts').update({ 
-                                home_team: h.team_name, home_logo: h.logo_url, 
-                                away_team: a?.team_name || 'BYE', away_logo: a?.logo_url || '' 
+                                home_team: pair.home.team_name, home_logo: pair.home.logo_url, 
+                                away_team: pair.away?.team_name || 'BYE', away_logo: pair.away?.logo_url || '' 
                             }).eq('id', match.id);
                         }
                     }
@@ -258,22 +257,26 @@
                 },
 
                 async saveScore() {
-                    // Calculate Winner with Away Goals
-                    const stats = { h_score: parseInt(this.h1), a_score: parseInt(this.a1), h_score_2: parseInt(this.h2), a_score_2: parseInt(this.a2) };
+                    const h1_val = parseInt(this.h1) || 0;
+                    const a1_val = parseInt(this.a1) || 0;
+                    const h2_val = parseInt(this.h2) || 0;
+                    const a2_val = parseInt(this.a2) || 0;
+
+                    const stats = { h_score: h1_val, a_score: a1_val, h_score_2: h2_val, a_score_2: a2_val };
                     const winSide = this.getWinnerStatus(stats);
                     
                     const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
                     const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
 
-                    // 1. Update Knockout Table
+                    // 1. Update Match
                     await _supabase.from('knockouts').update(stats).eq('id', this.scoringMatch.id);
 
-                    // 2. Submit to Results Table (Leg 1 & Leg 2)
+                    // 2. Double Entry to Results Table
                     const resultsPayload = [
-                        { home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId },
+                        { home_name: this.scoringMatch.home_team, h_score: h1_val, away_name: this.scoringMatch.away_team, a_score: a1_val, league_id: this.leagueId }
                     ];
                     if(this.scoringMatch.round_name !== 'Final') {
-                        resultsPayload.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
+                        resultsPayload.push({ home_name: this.scoringMatch.away_team, h_score: a2_val, away_name: this.scoringMatch.home_team, a_score: h2_val, league_id: this.leagueId });
                     }
                     await _supabase.from('results').insert(resultsPayload);
 
@@ -290,5 +293,4 @@
         }
     </script>
 </body>
-  </html>
-
+</html>
