@@ -40,7 +40,7 @@
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <div class="flex flex-col">
                 <h1 class="outfit text-2xl font-900 uppercase tracking-tighter leading-none">DLS<span class="text-[#00ff85]">26</span></h1>
-                <p class="text-[10px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Friendly</p>
+                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Friendly</p>
             </div>
             
             <div class="flex items-center gap-4">
@@ -49,9 +49,18 @@
                         Setup Draw
                     </button>
                 </template>
-                <button @click="window.history.back()" class="p-2.5 glass-card rounded-xl text-white/40 hover:text-[#00ff85] transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M9 5l7 7-7 7"/></svg>
-                </button>
+                <a href="home.html" 
+   class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] hover:bg-[#00ff850a] hover:scale-105 transition-all duration-200 flex items-center justify-center backdrop-blur-md border border-white/10 group"
+   title="Return to Home">
+    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
+         fill="none" 
+         stroke="currentColor" 
+         viewBox="0 0 24 24" 
+         stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+                </a>
+                
             </div>
         </div>
     </header>
