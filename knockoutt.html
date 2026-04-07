@@ -157,160 +157,215 @@
         </div>
     </div>
 
-    <script>
-        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+                        <script>
+    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
-        function knockoutEngine() {
-            return {
-                loading: true,
-                leagueId: new URLSearchParams(window.location.search).get('id'),
-                isAdmin: false,
-                adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
-                matches: [],
-                activeRounds: [],
-                scoringMatch: null,
-                h1: 0, a1: 0, h2: 0, a2: 0,
+    function knockoutEngine() {
+        return {
+            loading: true,
+            leagueId: new URLSearchParams(window.location.search).get('id'),
+            isAdmin: false,
+            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+            matches: [],
+            activeRounds: [],
+            scoringMatch: null,
+            h1: 0, a1: 0, h2: 0, a2: 0,
 
-                async init() {
-                    const { data: { session } } = await _supabase.auth.getSession();
-                    this.isAdmin = session?.user?.id === this.adminId;
-                    await this.fetchMatches();
+            async init() {
+                const { data: { session } } = await _supabase.auth.getSession();
+                this.isAdmin = session?.user?.id === this.adminId;
+                await this.fetchMatches();
+                this.loading = false;
+            },
+
+            async fetchMatches() {
+                // 1. Fetch the Bracket Structure
+                const { data: bracketData } = await _supabase
+                    .from('knockouts')
+                    .select('*')
+                    .eq('league_id', this.leagueId)
+                    .order('match_group', { ascending: true });
+
+                // 2. Fetch the Actual Scores from results table
+                const { data: resultsData } = await _supabase
+                    .from('results')
+                    .select('*')
+                    .eq('league_id', this.leagueId);
+
+                if (bracketData) {
+                    // 3. Map scores from results table into the bracket matches
+                    this.matches = bracketData.map(match => {
+                        if (!match.home_team || !match.away_team) return match;
+
+                        // Find Leg 1 score (Home vs Away)
+                        const leg1 = resultsData?.find(r => 
+                            r.home_name === match.home_team && r.away_name === match.away_team
+                        );
+
+                        // Find Leg 2 score (Away vs Home)
+                        const leg2 = resultsData?.find(r => 
+                            r.home_name === match.away_team && r.away_name === match.home_team
+                        );
+
+                        return {
+                            ...match,
+                            h_score: leg1 ? parseFloat(leg1.h_score) : 0,
+                            a_score: leg1 ? parseFloat(leg1.a_score) : 0,
+                            h_score_2: leg2 ? parseFloat(leg1.a_score_2 || leg2.h_score) : 0, 
+                            a_score_2: leg2 ? parseFloat(leg1.h_score_2 || leg2.a_score) : 0
+                        };
+                    });
+
+                    const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
+                    const existing = [...new Set(this.matches.map(m => m.round_name))];
+                    this.activeRounds = order.filter(r => existing.includes(r));
+                }
+            },
+
+            isFinished(m) {
+                return (parseFloat(m.h_score) + parseFloat(m.h_score_2) + parseFloat(m.a_score) + parseFloat(m.a_score_2)) > 0;
+            },
+
+            getWinnerStatus(m) {
+                const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
+                const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
+                
+                if (hTot === 0 && aTot === 0) return null;
+                if (hTot > aTot) return 'home';
+                if (aTot > hTot) return 'away';
+                
+                if (hTot === aTot) {
+                    // Away Goals Rule: Bracket home team's away goals are in Leg 2 (h_score_2)
+                    // Bracket away team's away goals are in Leg 1 (a_score)
+                    if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
+                    if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
+                }
+                return 'draw';
+            },
+
+            getMatchesByRound(round) {
+                return this.matches.filter(m => m.round_name === round);
+            },
+
+            openScoring(match) {
+                this.scoringMatch = match;
+                this.h1 = match.h_score || 0; 
+                this.a1 = match.a_score || 0;
+                this.h2 = match.h_score_2 || 0; 
+                this.a2 = match.a_score_2 || 0;
+            },
+
+            async setupTournament() {
+                if(!confirm("Start New Draw? Teams from same leagues will be separated.")) return;
+                this.loading = true;
+
+                const { data: teams } = await _supabase.from('league_members')
+                    .select('team_name, logo_url, previous_league_id')
+                    .eq('league_id', this.leagueId)
+                    .eq('status', 'Approved');
+
+                if (!teams || teams.length < 4) {
                     this.loading = false;
-                },
+                    return alert("Need at least 4 approved teams.");
+                }
 
-                async fetchMatches() {
-                    const { data } = await _supabase.from('knockouts').select('*').eq('league_id', this.leagueId).order('match_group', { ascending: true });
-                    if (data) {
-                        this.matches = data;
-                        const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
-                        const existing = [...new Set(data.map(m => m.round_name))];
-                        this.activeRounds = order.filter(r => existing.includes(r));
-                    }
-                },
+                await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
+                await _supabase.from('results').delete().eq('league_id', this.leagueId);
 
-                isFinished(m) {
-                    return (parseFloat(m.h_score) + parseFloat(m.h_score_2) + parseFloat(m.a_score) + parseFloat(m.a_score_2)) > 0;
-                },
+                const rounds = [];
+                if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
+                if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
+                if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
+                rounds.push({ name: 'Final', m: 1 });
 
-                getWinnerStatus(m) {
-                    const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
-                    const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
-                    if (hTot === 0 && aTot === 0) return null;
-                    if (hTot > aTot) return 'home';
-                    if (aTot > hTot) return 'away';
-                    
-                    // Away Goals Rule: Away goals in Leg 1 (a_score) vs Away goals in Leg 2 (h_score_2)
-                    // Note: In Leg 2, the original Home team is now the Away team.
-                    if (hTot === aTot) {
-                        if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
-                        if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
-                    }
-                    return 'draw';
-                },
-
-                getMatchesByRound(round) {
-                    return this.matches.filter(m => m.round_name === round);
-                },
-
-                openScoring(match) {
-                    this.scoringMatch = match;
-                    this.h1 = match.h_score || 0; this.a1 = match.a_score || 0;
-                    this.h2 = match.h_score_2 || 0; this.a2 = match.a_score_2 || 0;
-                },
-
-                async setupTournament() {
-                    if(!confirm("Start New Draw? Teams from same leagues will be separated.")) return;
-                    this.loading = true;
-
-                    const { data: teams } = await _supabase.from('league_members')
-                        .select('team_name, logo_url, previous_league_id')
-                        .eq('league_id', this.leagueId)
-                        .eq('status', 'Approved');
-
-                    if (!teams || teams.length < 4) {
-                        this.loading = false;
-                        return alert("Need at least 4 approved teams.");
-                    }
-
-                    await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
-
-                    const rounds = [];
-                    if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
-                    if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
-                    if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
-                    rounds.push({ name: 'Final', m: 1 });
-
-                    let nextRoundIds = [];
-                    for (let i = rounds.length - 1; i >= 0; i--) {
-                        const r = rounds[i];
-                        const roundMatches = [];
-                        for (let j = 0; j < r.m; j++) {
-                            const obj = { league_id: this.leagueId, round_name: r.name, match_group: j + 1 };
-                            if (nextRoundIds.length > 0) {
-                                obj.winner_next_id = nextRoundIds[Math.floor(j/2)].id;
-                                obj.next_slot = (j % 2 === 0) ? 'home' : 'away';
-                            }
-                            const { data } = await _supabase.from('knockouts').insert([obj]).select().single();
-                            roundMatches.push(data);
+                let nextRoundIds = [];
+                for (let i = rounds.length - 1; i >= 0; i--) {
+                    const r = rounds[i];
+                    const roundMatches = [];
+                    for (let j = 0; j < r.m; j++) {
+                        const obj = { league_id: this.leagueId, round_name: r.name, match_group: j + 1 };
+                        if (nextRoundIds.length > 0) {
+                            obj.winner_next_id = nextRoundIds[Math.floor(j/2)].id;
+                            obj.next_slot = (j % 2 === 0) ? 'home' : 'away';
                         }
-                        nextRoundIds = roundMatches;
+                        const { data } = await _supabase.from('knockouts').insert([obj]).select().single();
+                        roundMatches.push(data);
                     }
+                    nextRoundIds = roundMatches;
+                }
 
-                    // STRICT NEUTRAL PAIRING
-                    let pool = [...teams].sort(() => 0.5 - Math.random());
-                    let finalPairs = [];
-                    
-                    while(pool.length > 1) {
-                        let home = pool.shift();
-                        let awayIdx = pool.findIndex(t => t.previous_league_id !== home.previous_league_id);
-                        
-                        if(awayIdx === -1) awayIdx = 0; // Fallback if impossible
-                        let away = pool.splice(awayIdx, 1)[0];
-                        finalPairs.push({ home, away });
-                    }
+                let pool = [...teams].sort(() => 0.5 - Math.random());
+                let finalPairs = [];
+                while(pool.length > 1) {
+                    let home = pool.shift();
+                    let awayIdx = pool.findIndex(t => t.previous_league_id !== home.previous_league_id);
+                    let away = awayIdx !== -1 ? pool.splice(awayIdx, 1)[0] : pool.shift();
+                    finalPairs.push({ home, away });
+                }
 
-                    for (let i = 0; i < nextRoundIds.length; i++) {
-                        if(!finalPairs[i]) break;
-                        await _supabase.from('knockouts').update({ 
-                            home_team: finalPairs[i].home.team_name, home_logo: finalPairs[i].home.logo_url, 
-                            away_team: finalPairs[i].away.team_name, away_logo: finalPairs[i].away.logo_url 
-                        }).eq('id', nextRoundIds[i].id);
-                    }
-                    
-                    await this.fetchMatches();
-                    this.loading = false;
-                },
+                for (let i = 0; i < nextRoundIds.length; i++) {
+                    if(!finalPairs[i]) break;
+                    await _supabase.from('knockouts').update({ 
+                        home_team: finalPairs[i].home.team_name, home_logo: finalPairs[i].home.logo_url, 
+                        away_team: finalPairs[i].away.team_name, away_logo: finalPairs[i].away.logo_url 
+                    }).eq('id', nextRoundIds[i].id);
+                }
+                
+                await this.fetchMatches();
+                this.loading = false;
+            },
 
-                async saveScore() {
-                    const stats = { h_score: parseInt(this.h1), a_score: parseInt(this.a1), h_score_2: parseInt(this.h2), a_score_2: parseInt(this.a2) };
-                    const winSide = this.getWinnerStatus(stats);
-                    
+            async saveScore() {
+                const h1_val = parseInt(this.h1) || 0;
+                const a1_val = parseInt(this.a1) || 0;
+                const h2_val = parseInt(this.h2) || 0;
+                const a2_val = parseInt(this.a2) || 0;
+
+                const stats = { h_score: h1_val, a_score: a1_val, h_score_2: h2_val, a_score_2: a2_val };
+                const winSide = this.getWinnerStatus(stats);
+                
+                // 1. Clean old results for this pairing to avoid duplicates
+                await _supabase.from('results').delete().eq('league_id', this.leagueId)
+                    .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
+
+                // 2. Insert into results table
+                const logs = [{ 
+                    home_name: this.scoringMatch.home_team, 
+                    h_score: h1_val, 
+                    away_name: this.scoringMatch.away_team, 
+                    a_score: a1_val, 
+                    league_id: this.leagueId 
+                }];
+                
+                if(this.scoringMatch.round_name !== 'Final') {
+                    logs.push({ 
+                        home_name: this.scoringMatch.away_team, 
+                        h_score: a2_val, 
+                        away_name: this.scoringMatch.home_team, 
+                        a_score: h2_val, 
+                        league_id: this.leagueId 
+                    });
+                }
+                await _supabase.from('results').insert(logs);
+
+                // 3. Handle Progression in Knockouts Table
+                if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
                     const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
                     const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
-
-                    // Update Bracket
-                    await _supabase.from('knockouts').update(stats).eq('id', this.scoringMatch.id);
-
-                    // Results Table Log
-                    const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
-                    if(this.scoringMatch.round_name !== 'Final') {
-                        logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
-                    }
-                    await _supabase.from('results').insert(logs);
-
-                    // Progression
-                    if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
-                        const field = this.scoringMatch.next_slot === 'home' ? 
-                            { home_team: winnerName, home_logo: winnerLogo } : 
-                            { away_team: winnerName, away_logo: winnerLogo };
-                        await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
-                    }
-
-                    this.scoringMatch = null;
-                    await this.fetchMatches(); // Refresh UI immediately
+                    
+                    const field = this.scoringMatch.next_slot === 'home' ? 
+                        { home_team: winnerName, home_logo: winnerLogo } : 
+                        { away_team: winnerName, away_logo: winnerLogo };
+                    
+                    await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
                 }
+
+                this.scoringMatch = null;
+                await this.fetchMatches(); // UI will now pull fresh scores from results table
             }
         }
-    </script>
+    }
+                            </script>
+    
 </body>
 </html>
