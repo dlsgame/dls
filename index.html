@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
     <style>
-        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; scroll-behavior: smooth; }
         .outfit { font-family: 'Outfit', sans-serif; }
         [x-cloak] { display: none !important; }
 
@@ -34,15 +34,12 @@
             border-left: 1px solid rgba(0, 255, 133, 0.2);
         }
 
-        .fade-in-scroll {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.6s ease-out;
-        }
-        .fade-in-scroll.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        .menu-icon-anim { transition: transform 0.3s ease; }
+        .group:hover .menu-icon-anim { animation: heartBeat 1s infinite; }
+
+        .status-badge { font-size: 10px; font-weight: 900; padding: 4px 12px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.1em; }
+        .status-active { background: rgba(0, 255, 133, 0.1); color: #00ff85; border: 1px solid rgba(0, 255, 133, 0.2); }
+        .status-eliminated { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
     </style>
 </head>
 <body x-data="homeApp()" x-init="init()" class="pb-10">
@@ -65,9 +62,9 @@
 
             <button @click="menuOpen = true" class="p-2 group">
                 <div class="space-y-1.5">
-                    <span class="block w-6 h-0.5 bg-[#00ff85] transition-all group-hover:w-4"></span>
-                    <span class="block w-6 h-0.5 bg-[#00ff85] transition-all"></span>
-                    <span class="block w-4 h-0.5 bg-[#00ff85] transition-all group-hover:w-6"></span>
+                    <span class="block w-6 h-0.5 bg-[#00ff85]"></span>
+                    <span class="block w-6 h-0.5 bg-[#00ff85]"></span>
+                    <span class="block w-4 h-0.5 bg-[#00ff85] ml-auto"></span>
                 </div>
             </button>
         </div>
@@ -80,34 +77,32 @@
          x-transition:leave="transition ease-in duration-300"
          x-transition:leave-start="translate-x-0"
          x-transition:leave-end="translate-x-full"
-         class="fixed inset-y-0 right-0 w-[80%] max-w-sm sidebar-gradient z-[60] shadow-2xl p-8 flex flex-col" x-cloak>
+         class="fixed inset-y-0 right-0 w-[70%] max-w-[280px] sidebar-gradient z-[60] shadow-2xl p-6 flex flex-col" x-cloak>
         
-        <div class="flex justify-end mb-8">
-            <button @click="menuOpen = false" class="text-white/40 hover:text-[#00ff85]">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="flex justify-end mb-4">
+            <button @click="menuOpen = false" class="text-white/40 hover:text-[#00ff85] p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
 
-        <nav class="space-y-2 flex-grow">
+        <nav class="space-y-1 flex-grow overflow-y-auto">
             <template x-for="item in menuItems">
                 <a :href="item.link" 
                    x-show="item.adminOnly ? isAdmin : true"
-                   class="flex items-center space-x-4 p-4 rounded-2xl hover:bg-[#00ff850a] border border-transparent hover:border-[#00ff8533] transition-all group">
-                    <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#00ff85] group-hover:scale-110 transition-transform" x-html="item.icon"></div>
-                    <span class="font-bold text-sm tracking-wide text-white/80 group-hover:text-white" x-text="item.name"></span>
+                   class="flex items-center space-x-3 p-3 rounded-xl hover:bg-[#00ff850a] border border-transparent hover:border-[#00ff8522] transition-all group">
+                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#00ff85] menu-icon-anim" x-html="item.icon"></div>
+                    <span class="font-bold text-xs tracking-wide text-white/70 group-hover:text-white" x-text="item.name"></span>
                 </a>
             </template>
         </nav>
 
-        <div class="border-t border-white/5 pt-8 mt-auto">
-            <button @click="logout()" class="flex items-center space-x-4 p-4 w-full text-red-500">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                <span class="font-black uppercase text-[10px] tracking-widest">Terminate Session</span>
+        <div class="border-t border-white/5 pt-6 mt-4">
+            <button @click="logout()" class="flex items-center space-x-3 p-3 w-full text-red-500 hover:bg-red-500/5 rounded-xl transition-all group">
+                <div class="w-8 h-8 flex items-center justify-center group-hover:animate-pulse">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </div>
+                <span class="font-black uppercase text-[9px] tracking-widest">Sign Out</span>
             </button>
-            <div class="mt-6 px-4">
-                <span class="outfit text-white text-xl font-[900] tracking-tighter uppercase">DLS<span class="text-[#00ff85]">26</span></span>
-                <p class="text-[8px] tracking-[0.3em] font-bold text-[#00ff85] uppercase">Friendly</p>
-            </div>
         </div>
     </div>
 
@@ -115,46 +110,64 @@
 
     <main class="max-w-4xl mx-auto p-6" x-show="!loading">
         <div class="mb-10">
-            <h1 class="outfit font-[900] text-4xl uppercase tracking-tighter italic">League <span class="text-[#00ff85]">Sectors</span></h1>
-            <p class="text-white/30 text-[10px] font-black uppercase tracking-[.3em] mt-2">Active Operations Feed</p>
+            <h1 class="outfit font-[900] text-3xl uppercase tracking-tighter italic">Operational <span class="text-[#00ff85]">Sectors</span></h1>
+            <p class="text-white/30 text-[10px] font-black uppercase tracking-[.3em] mt-2">Central Registry Feed</p>
         </div>
 
-        <div class="space-y-8">
+        <div class="space-y-10">
             <template x-for="league in leagues" :key="league.id">
-                <div class="glass-card rounded-[2.5rem] overflow-hidden border-t-4 border-t-[#00ff85] fade-in-scroll" 
-                     :class="{'visible': true}"> <div class="p-10 bg-[#0d1321]">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <span class="text-[#00ff85] font-black text-[10px] tracking-[.3em] bg-[#00ff8515] px-4 py-1.5 rounded-full uppercase" x-text="'Season ' + league.season_number"></span>
-                                <h2 class="outfit font-[900] text-4xl uppercase tracking-tight mt-4" x-text="league.name"></h2>
+                <div class="glass-card rounded-[2.5rem] overflow-hidden border-t-4 border-t-[#00ff85] animate__animated animate__fadeInUp">
+                    
+                    <div class="p-8 bg-[#0d1321]">
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center space-x-2">
+                                <div class="bg-[#00ff8515] p-2 rounded-lg">
+                                    <svg class="w-4 h-4 text-[#00ff85]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
+                                <span class="text-[9px] font-black text-[#00ff85] uppercase tracking-widest" x-text="league.category"></span>
                             </div>
-                            <div class="text-right">
-                                <p class="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Prize Pool</p>
-                                <p class="text-2xl font-[900] text-[#00ff85] outfit" x-text="league.prize_pool || 'TBD'"></p>
-                            </div>
+                            <span class="text-white/20 font-black text-[9px] uppercase tracking-tighter" x-text="'Season ' + league.season_number"></span>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4 mb-8">
-                            <div class="bg-white/5 p-5 rounded-3xl border border-white/5">
-                                <p class="text-[8px] text-white/30 uppercase font-black mb-1">Status</p>
+                        <h2 class="outfit font-[900] text-4xl uppercase tracking-tight mb-3" x-text="league.name"></h2>
+                        <p class="text-white/40 text-xs leading-relaxed mb-8 font-medium italic" x-text="league.description"></p>
+
+                        <div class="grid grid-cols-3 gap-3 mb-8">
+                            <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                                <p class="text-[7px] text-white/30 uppercase font-black mb-1">Prize</p>
+                                <p class="text-xs font-black text-[#00ff85]" x-text="league.prize_pool || 'N/A'"></p>
+                            </div>
+                            <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                                <p class="text-[7px] text-white/30 uppercase font-black mb-1">Status</p>
                                 <p class="text-xs font-black text-white uppercase" x-text="league.status"></p>
                             </div>
-                            <div class="bg-white/5 p-5 rounded-3xl border border-white/5">
-                                <p class="text-[8px] text-white/30 uppercase font-black mb-1">Deployment</p>
+                            <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
+                                <p class="text-[7px] text-white/30 uppercase font-black mb-1">Entry</p>
                                 <p class="text-xs font-black text-white" x-text="league.joined_count + '/' + league.total_slots"></p>
                             </div>
                         </div>
 
-                        <template x-if="league.userRank">
-                            <div class="mb-8 p-4 bg-[#00ff8510] border border-[#00ff8533] rounded-2xl flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase text-[#00ff85]">Your Current Position</span>
-                                <span class="outfit font-[900] text-xl text-[#00ff85]" x-text="'#' + league.userRank"></span>
+                        <template x-if="league.category === 'League' && league.userRank">
+                            <div class="mb-6 py-3 px-5 bg-[#00ff850a] border border-[#00ff8522] rounded-xl flex justify-between items-center">
+                                <span class="text-[9px] font-bold text-[#00ff85] uppercase tracking-widest">Current Rank</span>
+                                <span class="text-[12px] font-black text-white" x-text="'#' + league.userRank"></span>
                             </div>
                         </template>
 
-                        <button @click="window.location.href = 'league-shortform.html?id=' + league.id" 
-                                class="w-full py-6 bg-[#00ff85] text-[#0a0f1a] rounded-[1.5rem] outfit font-[900] uppercase tracking-[.2em] shadow-[0_10px_30px_rgba(0,255,133,0.2)] hover:scale-[1.02] active:scale-95 transition-all">
-                            VIEW PROTOCOL
+                        <template x-if="league.category === 'Knock Outs' && league.isMember">
+                            <div class="mb-6 py-3 px-5 bg-white/5 border border-white/10 rounded-xl flex justify-between items-center">
+                                <span class="text-[9px] font-bold text-white/40 uppercase tracking-widest">Tournament Stage</span>
+                                <span class="status-badge" 
+                                      :class="league.knockoutStatus === 'Eliminated' ? 'status-eliminated' : 'status-active'"
+                                      x-text="league.knockoutStatus"></span>
+                            </div>
+                        </template>
+
+                        <button @click="navigateToLeague(league)" 
+                                class="w-full py-5 rounded-2xl outfit font-[900] uppercase tracking-[.2em] transition-all flex items-center justify-center space-x-3"
+                                :class="league.isMember ? 'bg-white/5 border border-white/10 text-white' : 'bg-[#00ff85] text-[#0a0f1a] shadow-[0_10px_25px_rgba(0,255,133,0.2)] hover:scale-[1.01]'">
+                            <span x-text="league.isMember ? 'View League' : 'Join League'"></span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                         </button>
                     </div>
                 </div>
@@ -173,95 +186,126 @@
                 adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
                 leagues: [],
                 menuItems: [
-                    { name: 'Fixtures', link: 'fixtures.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2.5"/></svg>' },
-                    { name: 'Live Standings', link: 'standings.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2.5"/></svg>' },
-                    { name: 'Match Results', link: 'results.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2.5"/></svg>' },
-                    { name: 'Tournaments', link: 'tournaments.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" stroke-width="2"/></svg>' },
-                    { name: 'My Leagues', link: 'myleaguesh.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-width="2"/></svg>' },
-                    { name: 'Insights', link: 'insights.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-width="2.5"/></svg>' },
-                    { name: 'Profile', link: 'profile.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2"/></svg>' },
-                    { name: 'Admin Panel', link: 'adminpanel.html', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-width="2"/></svg>', adminOnly: true }
+                    { name: 'Fixtures', link: 'fixtures.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2"/></svg>' },
+                    { name: 'Standings', link: 'standings.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-width="2"/></svg>' },
+                    { name: 'Results', link: 'results.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke-width="2.5"/></svg>' },
+                    { name: 'Tournaments', link: 'tournaments.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4" stroke-width="2"/></svg>' },
+                    { name: 'My Leagues', link: 'myleaguesh.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6" stroke-width="2"/></svg>' },
+                    { name: 'Insights', link: 'insights.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0l-8 8" stroke-width="2"/></svg>' },
+                    { name: 'Profile', link: 'profile.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2"/></svg>' },
+                    { name: 'Admin Panel', link: 'adminpanel.html', icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4" stroke-width="2"/></svg>', adminOnly: true }
                 ],
 
                 async init() {
                     const { data: { user } } = await _supabase.auth.getUser();
                     if (!user) { window.location.href = 'signin.html'; return; }
-                    if (user.id === this.adminId) this.isAdmin = true;
+                    this.isAdmin = user.id === this.adminId;
 
                     await this.fetchLeagues(user.id);
                     this.loading = false;
                 },
 
                 async fetchLeagues(userId) {
-                    // Fetch Leagues
                     const { data: leaguesData } = await _supabase
                         .from('leagues')
                         .select('*')
                         .order('created_at', { ascending: false });
 
                     if (leaguesData) {
-                        const enrichedLeagues = await Promise.all(leaguesData.map(async (lg) => {
-                            // Get Joined Count
+                        this.leagues = await Promise.all(leaguesData.map(async (lg) => {
+                            // Fetch joined count from standings table
                             const { count } = await _supabase
-                                .from('league_members')
+                                .from('standings')
                                 .select('*', { count: 'exact', head: true })
                                 .eq('league_id', lg.id);
 
-                            // Check if User is in league
-                            const { data: member } = await _supabase
-                                .from('league_members')
+                            // Check if user is in this specific league via standings
+                            const { data: userEntry } = await _supabase
+                                .from('standings')
                                 .select('team_name')
                                 .eq('league_id', lg.id)
                                 .eq('user_id', userId)
                                 .maybeSingle();
 
                             let rank = null;
-                            if (member) {
-                                // Get Standing position
-                                const { data: standings } = await _supabase
-                                    .from('standings')
-                                    .select('team_name')
-                                    .eq('league_id', lg.id)
-                                    .order('points', { ascending: false })
-                                    .order('gd', { ascending: false });
-                                
-                                if (standings) {
-                                    const index = standings.findIndex(s => s.team_name === member.team_name);
-                                    if (index !== -1) rank = index + 1;
+                            let knockoutStatus = "Not Started";
+
+                            if (userEntry) {
+                                if (lg.category === 'League') {
+                                    const { data: std } = await _supabase
+                                        .from('standings')
+                                        .select('team_name')
+                                        .eq('league_id', lg.id)
+                                        .order('points', { ascending: false })
+                                        .order('gd', { ascending: false });
+                                    
+                                    if (std) {
+                                        const idx = std.findIndex(s => s.team_name === userEntry.team_name);
+                                        if (idx !== -1) rank = idx + 1;
+                                    }
+                                } else if (lg.category === 'Knock Outs') {
+                                    // Fetch furthest round in knockouts for this team
+                                    const { data: koMatches } = await _supabase
+                                        .from('knockouts')
+                                        .select('round_name, home_team, away_team, h_score, a_score, h_score_2, a_score_2')
+                                        .eq('league_id', lg.id)
+                                        .or(`home_team.eq."${userEntry.team_name}",away_team.eq."${userEntry.team_name}"`);
+
+                                    if (koMatches && koMatches.length > 0) {
+                                        // Simple logic: find the latest round name they appear in
+                                        // If they lost the last match they were in, they are "Eliminated"
+                                        const roundsOrder = ['Final', 'Semi-Finals', 'Quarter-Finals', 'Round of 16'];
+                                        let currentRound = "Tournament Active";
+                                        
+                                        // Loop through order to find highest reached
+                                        for (const r of roundsOrder) {
+                                            const match = koMatches.find(m => m.round_name === r);
+                                            if (match) {
+                                                const isHome = match.home_team === userEntry.team_name;
+                                                const hTotal = (match.h_score || 0) + (match.h_score_2 || 0);
+                                                const aTotal = (match.a_score || 0) + (match.a_score_2 || 0);
+                                                
+                                                const hasPlayed = (hTotal + aTotal) > 0;
+                                                const won = isHome ? (hTotal > aTotal) : (aTotal > hTotal);
+                                                
+                                                if (hasPlayed && !won && r !== 'Final') {
+                                                    currentRound = "Eliminated";
+                                                } else {
+                                                    currentRound = r;
+                                                }
+                                                break;
+                                            }
+                                        }
+                                        knockoutStatus = currentRound;
+                                    }
                                 }
                             }
 
-                            return {
-                                ...lg,
-                                joined_count: count || 0,
-                                userRank: rank
+                            return { 
+                                ...lg, 
+                                joined_count: count || 0, 
+                                userRank: rank, 
+                                isMember: !!userEntry,
+                                knockoutStatus: knockoutStatus 
                             };
                         }));
-                        this.leagues = enrichedLeagues;
                     }
                 },
 
-                
+                navigateToLeague(league) {
+                    if (league.category === 'Knock Outs') {
+                        window.location.href = `knockout.html?id=${league.id}`;
+                    } else {
+                        window.location.href = `league-shortform.html?id=${league.id}`;
+                    }
+                },
+
+                async logout() {
+                    await _supabase.auth.signOut();
+                    window.location.href = 'signin.html';
+                }
             }
         }
-
-        // Intersection Observer for the Fade-In Scroll Effect
-        document.addEventListener('DOMContentLoaded', () => {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            // Watch for new elements
-            const interval = setInterval(() => {
-                document.querySelectorAll('.fade-in-scroll:not(.visible)').forEach(el => {
-                    observer.observe(el);
-                });
-            }, 1000);
-        });
     </script>
 </body>
 </html>
