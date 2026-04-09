@@ -494,7 +494,7 @@
 
             async fetchMembers() {
                 const { data, count, error } = await _supabase
-                    .from('league_members')
+                    .from('standings')
                     .select('*', { count: 'exact' })
                     .eq('league_id', this.leagueId);
                 
