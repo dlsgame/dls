@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLS26 | Hall of Fame</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        .glass-card { 
+            background: rgba(17, 24, 39, 0.7); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 206, 156, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .emerald-gradient {
+            background: linear-gradient(135deg, #00ff85 0%, #00ce9c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .trophy-badge {
+            background: linear-gradient(135deg, rgba(0, 255, 133, 0.2) 0%, rgba(0, 206, 156, 0.1) 100%);
+            border: 1px solid rgba(0, 255, 133, 0.3);
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="hallOfFameEngine()" x-init="init()">
+
+    <nav class="sticky top-0 z-50 px-6 py-4 bg-[#0a0f1a]/80 backdrop-blur-lg border-b border-white/5">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="home.html" class="p-2 glass-card rounded-xl text-white/60 hover:text-[#00ff85] transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                </a>
+                <h1 class="outfit font-black text-2xl tracking-tighter">HALL OF <span class="emerald-gradient">FAME</span></h1>
+            </div>
+            <div class="hidden sm:block">
+                <p class="text-[10px] outfit font-bold text-white/40 tracking-[3px] uppercase">Legends Never Die</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-10">
+        
+        <div x-show="loading" class="flex flex-col items-center justify-center py-20">
+            <div class="w-12 h-12 border-4 border-[#00ff85]/20 border-t-[#00ff85] rounded-full animate-spin"></div>
+            <p class="mt-4 outfit font-bold text-white/40 animate-pulse">RETRIEVING LEGENDS...</p>
+        </div>
+
+        <div x-show="!loading" x-cloak class="space-y-12">
+            
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-8 w-1 bg-[#00ff85] rounded-full"></div>
+                    <h2 class="outfit font-extrabold text-xl uppercase tracking-widest text-white/90">The Immortals</h2>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <template x-for="(leader, index) in leaders" :key="leader.team_name">
+                        <div class="glass-card p-6 rounded-3xl text-center relative overflow-hidden group hover:border-[#00ff85] transition-all duration-300">
+                            <div class="absolute -top-2 -right-2 text-6xl font-black text-white/5 group-hover:text-[#00ff85]/10 transition-colors" x-text="index + 1"></div>
+                            <img :src="leader.logo_url" class="w-16 h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(0,255,133,0.3)]">
+                            <h3 class="font-bold text-lg truncate" x-text="leader.team_name"></h3>
+                            <div class="mt-2 inline-flex items-center gap-1.5 trophy-badge px-3 py-1 rounded-full text-[#00ff85] text-xs font-black">
+                                <span>🏆</span> <span x-text="leader.trophies"></span> <span x-text="leader.trophies > 1 ? 'TITLES' : 'TITLE'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <hr class="border-white/5">
+
+            <section>
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="h-8 w-1 bg-[#00ff85] rounded-full"></div>
+                    <h2 class="outfit font-extrabold text-xl uppercase tracking-widest text-white/90">Season Archives</h2>
+                </div>
+
+                <div class="space-y-6">
+                    <template x-for="record in history" :key="record.id">
+                        <div class="glass-card p-6 rounded-3xl flex flex-col md:flex-row items-center gap-6 group hover:bg-white/[0.02]">
+                            <div class="flex-shrink-0 text-center md:border-r border-white/10 md:pr-8">
+                                <p class="text-[10px] font-black text-[#00ff85] uppercase tracking-widest">Season</p>
+                                <p class="text-4xl font-black outfit" x-text="record.season_number"></p>
+                                <span class="text-[10px] px-2 py-0.5 bg-white/10 rounded uppercase font-bold" x-text="record.category"></span>
+                            </div>
+
+                            <div class="flex items-center gap-4 flex-1">
+                                <img :src="record.logo_url" class="w-14 h-14 object-contain">
+                                <div>
+                                    <p class="text-[10px] font-bold text-white/40 uppercase tracking-tighter" x-text="record.league_name"></p>
+                                    <h4 class="text-xl font-black outfit text-white group-hover:text-[#00ff85] transition-colors" x-text="record.team_name"></h4>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-4 gap-4 text-center" x-show="record.category === 'League'">
+                                <div class="px-4">
+                                    <p class="text-[9px] font-bold text-white/30 uppercase">Wins</p>
+                                    <p class="font-black text-[#00ff85]" x-text="record.wins"></p>
+                                </div>
+                                <div class="px-4 border-l border-white/5">
+                                    <p class="text-[9px] font-bold text-white/30 uppercase">Draws</p>
+                                    <p class="font-black" x-text="record.draws"></p>
+                                </div>
+                                <div class="px-4 border-l border-white/5">
+                                    <p class="text-[9px] font-bold text-white/30 uppercase">Loses</p>
+                                    <p class="font-black text-red-400" x-text="record.losses"></p>
+                                </div>
+                                <div class="px-4 border-l border-white/5 bg-[#00ff85]/10 rounded-xl">
+                                    <p class="text-[9px] font-bold text-[#00ff85] uppercase">Points</p>
+                                    <p class="font-black text-[#00ff85]" x-text="record.points"></p>
+                                </div>
+                            </div>
+
+                            <div x-show="record.category === 'Knockout'" class="hidden md:block">
+                                <span class="px-4 py-2 rounded-2xl border border-[#00ff85]/30 text-[#00ff85] font-black text-xs italic uppercase">
+                                    Knockout Champion 🏆
+                                </span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+        function hallOfFameEngine() {
+            return {
+                loading: true,
+                history: [],
+                leaders: [],
+
+                async init() {
+                    await this.fetchHallOfFame();
+                    this.loading = false;
+                },
+
+                async fetchHallOfFame() {
+                    const { data, error } = await _supabase
+                        .from('hall_of_fame')
+                        .select('*')
+                        .order('season_number', { ascending: false })
+                        .order('created_at', { ascending: false });
+
+                    if (data) {
+                        this.history = data;
+                        this.calculateLeaders(data);
+                    }
+                },
+
+                calculateLeaders(data) {
+                    const counts = {};
+                    
+                    data.forEach(item => {
+                        if (!counts[item.team_name]) {
+                            counts[item.team_name] = {
+                                team_name: item.team_name,
+                                logo_url: item.logo_url,
+                                trophies: 0
+                            };
+                        }
+                        counts[item.team_name].trophies += 1;
+                    });
+
+                    // Sort by trophy count and take top 4
+                    this.leaders = Object.values(counts)
+                        .sort((a, b) => b.trophies - a.trophies)
+                        .slice(0, 4);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
