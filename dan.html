@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLS26 | Champions League</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
+        
+        /* Skeleton Shimmer Effect */
+        .shimmer {
+            background: linear-gradient(90deg, #111827 25%, #1a2235 50%, #111827 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .bracket-container { display: flex; gap: 60px; padding: 40px 20px; overflow-x: auto; min-height: 80vh; scrollbar-width: none; }
+        .bracket-container::-webkit-scrollbar { display: none; }
+        .round-column { flex-shrink: 0; width: 280px; display: flex; flex-direction: column; justify-content: space-around; }
+        .match-box { position: relative; padding: 16px; border-radius: 20px; border-left: 4px solid rgba(255,255,255,0.05); transition: all 0.3s ease; }
+        .match-active { border-left-color: #00ff85; background: rgba(0, 255, 133, 0.03); }
+        .team-winner { color: #00ff85 !important; font-weight: 900; }
+        .team-highlight { background: rgba(0, 255, 133, 0.15) !important; border: 1px solid #00ff85 !important; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="knockoutEngine()" x-init="init()">
+
+    <header class="bg-[#0a0f1a]/80 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex flex-col">
+                <h1 class="outfit text-2xl font-900 uppercase tracking-tighter leading-none">DLS<span class="text-[#00ff85]">26</span></h1>
+                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Friendly</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <template x-if="!isJoined && !isAdmin">
+                    <button 
+                        @click="requestJoin()" 
+                        :disabled="joinStatus !== 'Idle'"
+                        class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all"
+                        :class="joinStatus === 'Idle' ? 'bg-[#00ff85] text-black hover:scale-105' : 'bg-white/10 text-white/40 cursor-not-allowed'"
+                        x-text="joinStatus === 'Idle' ? 'Request to Join' : joinStatus">
+                    </button>
+                </template>
+
+                <template x-if="isAdmin">
+                    <button @click="setupTournament()" class="bg-[#00ff85] text-black text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-widest hover:scale-105 transition-all">
+                        Setup Draw
+                    </button>
+                </template>
+                <a href="home.html" 
+                   class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] hover:bg-[#00ff850a] hover:scale-105 transition-all duration-200 flex items-center justify-center backdrop-blur-md border border-white/10 group"
+                   title="Return to Home">
+                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
+                         fill="none" 
+                         stroke="currentColor" 
+                         viewBox="0 0 24 24" 
+                         stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div x-show="loading" class="bracket-container">
+            <template x-for="i in 3">
+                <div class="round-column">
+                    <div class="h-4 w-24 shimmer rounded-full mx-auto mb-10 opacity-20"></div>
+                    <template x-for="j in 4">
+                        <div class="glass-card p-6 rounded-2xl mb-8 opacity-40">
+                            <div class="h-4 w-full shimmer rounded mb-4"></div>
+                            <div class="h-4 w-full shimmer rounded"></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <div class="bracket-container" x-show="!loading" x-cloak>
+            <template x-for="round in activeRounds" :key="round">
+                <div class="round-column">
+                    <div class="text-center mb-6">
+                        <span class="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block" x-text="round"></span>
+                    </div>
+
+                    <template x-for="match in getMatchesByRound(round)" :key="match.id">
+                        <div class="glass-card match-box mb-8" :class="isFinished(match) ? 'match-active' : ''">
+                            <div class="flex justify-between items-center mb-3 p-2 rounded-lg transition-colors" :class="match.home_team === userTeamName ? 'team-highlight' : ''">
+                                <div class="flex items-center gap-3">
+                                    <img :src="match.home_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
+                                    <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
+                                          :class="getWinnerStatus(match) === 'home' ? 'team-winner' : ''"
+                                          x-text="match.home_team || 'TBD'"></span>
+                                </div>
+                                <div class="flex gap-1.5 items-center">
+                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.h_score || 0"></span>
+                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.h_score_2 || 0"></span>
+                                    <span class="text-xs font-black outfit text-[#00ff85]" x-text="(match.h_score||0) + (match.h_score_2||0)"></span>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center p-2 rounded-lg transition-colors" :class="match.away_team === userTeamName ? 'team-highlight' : ''">
+                                <div class="flex items-center gap-3">
+                                    <img :src="match.away_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
+                                    <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
+                                          :class="getWinnerStatus(match) === 'away' ? 'team-winner' : ''"
+                                          x-text="match.away_team || 'TBD'"></span>
+                                </div>
+                                <div class="flex gap-1.5 items-center">
+                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.a_score || 0"></span>
+                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.a_score_2 || 0"></span>
+                                    <span class="text-xs font-black outfit text-white/40" x-text="(match.a_score||0) + (match.a_score_2||0)"></span>
+                                </div>
+                            </div>
+
+                            <template x-if="isAdmin && match.home_team && match.away_team">
+                                <button @click="openScoring(match)" class="absolute -right-3 -top-3 bg-[#00ff85] text-black rounded-full p-2 shadow-xl hover:scale-110 transition-transform">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </main>
+
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80" x-cloak x-transition>
+        <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border-[#00ff8540]">
+            <div class="flex justify-between items-center mb-8">
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.home_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.home_team"></p>
+                </div>
+                <div class="px-4 outfit font-900 text-[#00ff85] italic">VS</div>
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.away_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.away_team"></p>
+                </div>
+            </div>
+            
+            <div class="space-y-4 mb-8">
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 (Score)</p>
+                    <div class="flex items-center justify-around">
+                        <input type="number" x-model="h1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                    </div>
+                </div>
+
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 (Score)</p>
+                    <div class="flex items-center justify-around">
+                        <input type="number" x-model="h2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                    </div>
+                </div>
+            </div>
+
+            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px] shadow-lg shadow-[#00ff8520]">Confirm & Update</button>
+            <button @click="scoringMatch = null" class="w-full py-3 text-white/20 font-bold uppercase text-[9px] mt-2">Cancel</button>
+        </div>
+    </div>
+
+<script>
+    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+    function knockoutEngine() {
+        return {
+            loading: true,
+            leagueId: new URLSearchParams(window.location.search).get('id'),
+            isAdmin: false,
+            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+            user: null,
+            userData: null,
+            userTeamName: '',
+            isJoined: false,
+            joinStatus: 'Idle',
+            matches: [],
+            activeRounds: [],
+            scoringMatch: null,
+            h1: 0, a1: 0, h2: 0, a2: 0,
+
+            async init() {
+                const { data: { session } } = await _supabase.auth.getSession();
+                this.user = session?.user;
+                this.isAdmin = this.user?.id === this.adminId;
+
+                if (this.user) {
+                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).single();
+                    if(ui) {
+                        this.userData = ui;
+                        this.userTeamName = ui.team_name;
+                    }
+                    await this.checkMembership();
+                }
+
+                await this.fetchMatches();
+                this.loading = false;
+            },
+
+            async checkMembership() {
+                const { data } = await _supabase
+                    .from('league_members')
+                    .select('status')
+                    .eq('league_id', this.leagueId)
+                    .eq('user_id', this.user.id)
+                    .maybeSingle();
+
+                if (data) {
+                    this.joinStatus = data.status;
+                    if (data.status === 'Approved') this.isJoined = true;
+                }
+            },
+
+            async requestJoin() {
+                if (this.joinStatus !== 'Idle' || !this.userData) return;
+                
+                this.joinStatus = 'Requesting';
+                const { error } = await _supabase.from('league_members').insert([{
+                    user_id: this.user.id,
+                    league_id: this.leagueId,
+                    team_name: this.userData.team_name,
+                    logo_url: this.userData.logo_url,
+                    email: this.user.email,
+                    status: 'Pending'
+                }]);
+
+                if (error) {
+                    this.joinStatus = 'Idle';
+                    alert("Error joining: " + error.message);
+                } else {
+                    this.joinStatus = 'Pending';
+                }
+            },
+
+            async fetchMatches() {
+                const { data: bracketData } = await _supabase
+                    .from('knockouts')
+                    .select('*')
+                    .eq('league_id', this.leagueId)
+                    .order('match_group', { ascending: true });
+
+                const { data: resultsData } = await _supabase
+                    .from('results')
+                    .select('*')
+                    .eq('league_id', this.leagueId);
+
+                if (bracketData) {
+                    this.matches = bracketData.map(match => {
+                        if (!match.home_team || !match.away_team) return match;
+
+                        const leg1 = resultsData?.find(r => 
+                            r.home_name === match.home_team && r.away_name === match.away_team
+                        );
+
+                        const leg2 = resultsData?.find(r => 
+                            r.home_name === match.away_team && r.away_name === match.home_team
+                        );
+
+                        return {
+                            ...match,
+                            h_score: leg1 ? parseFloat(leg1.h_score) : 0,
+                            a_score: leg1 ? parseFloat(leg1.a_score) : 0,
+                            h_score_2: leg2 ? parseFloat(leg2.h_score) : 0, 
+                            a_score_2: leg2 ? parseFloat(leg2.a_score) : 0
+                        };
+                    });
+
+                    const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
+                    const existing = [...new Set(this.matches.map(m => m.round_name))];
+                    this.activeRounds = order.filter(r => existing.includes(r));
+                }
+            },
+
+            isFinished(m) {
+                return (parseFloat(m.h_score) + parseFloat(m.h_score_2) + parseFloat(m.a_score) + parseFloat(m.a_score_2)) > 0;
+            },
+
+            getWinnerStatus(m) {
+                const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
+                const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
+                
+                if (hTot === 0 && aTot === 0) return null;
+                if (hTot > aTot) return 'home';
+                if (aTot > hTot) return 'away';
+                
+                if (hTot === aTot) {
+                    if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
+                    if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
+                }
+                return 'draw';
+            },
+
+            getMatchesByRound(round) {
+                return this.matches.filter(m => m.round_name === round);
+            },
+
+            openScoring(match) {
+                this.scoringMatch = match;
+                this.h1 = match.h_score || 0; 
+                this.a1 = match.a_score || 0;
+                this.h2 = match.h_score_2 || 0; 
+                this.a2 = match.a_score_2 || 0;
+            },
+
+            async setupTournament() {
+                if(!confirm("Start New Draw? Teams from same leagues will be separated.")) return;
+                this.loading = true;
+
+                const { data: teams } = await _supabase.from('league_members')
+                    .select('team_name, logo_url, previous_league_id')
+                    .eq('league_id', this.leagueId)
+                    .eq('status', 'Approved');
+
+                if (!teams || teams.length < 4) {
+                    this.loading = false;
+                    return alert("Need at least 4 approved teams.");
+                }
+
+                await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
+                await _supabase.from('results').delete().eq('league_id', this.leagueId);
+
+                const rounds = [];
+                if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
+                if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
+                if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
+                rounds.push({ name: 'Final', m: 1 });
+
+                let nextRoundIds = [];
+                for (let i = rounds.length - 1; i >= 0; i--) {
+                    const r = rounds[i];
+                    const roundMatches = [];
+                    for (let j = 0; j < r.m; j++) {
+                        const obj = { league_id: this.leagueId, round_name: r.name, match_group: j + 1 };
+                        if (nextRoundIds.length > 0) {
+                            obj.winner_next_id = nextRoundIds[Math.floor(j/2)].id;
+                            obj.next_slot = (j % 2 === 0) ? 'home' : 'away';
+                        }
+                        const { data } = await _supabase.from('knockouts').insert([obj]).select().single();
+                        roundMatches.push(data);
+                    }
+                    nextRoundIds = roundMatches;
+                }
+
+                let pool = [...teams].sort(() => 0.5 - Math.random());
+                let finalPairs = [];
+                while(pool.length > 1) {
+                    let home = pool.shift();
+                    let awayIdx = pool.findIndex(t => t.previous_league_id !== home.previous_league_id);
+                    let away = awayIdx !== -1 ? pool.splice(awayIdx, 1)[0] : pool.shift();
+                    finalPairs.push({ home, away });
+                }
+
+                for (let i = 0; i < nextRoundIds.length; i++) {
+                    if(!finalPairs[i]) break;
+                    await _supabase.from('knockouts').update({ 
+                        home_team: finalPairs[i].home.team_name, home_logo: finalPairs[i].home.logo_url, 
+                        away_team: finalPairs[i].away.team_name, away_logo: finalPairs[i].away.logo_url 
+                    }).eq('id', nextRoundIds[i].id);
+                }
+                
+                await this.fetchMatches();
+                this.loading = false;
+            },
+
+            async saveScore() {
+                const h1_val = parseInt(this.h1) || 0;
+                const a1_val = parseInt(this.a1) || 0;
+                const h2_val = parseInt(this.h2) || 0;
+                const a2_val = parseInt(this.a2) || 0;
+
+                const stats = { h_score: h1_val, a_score: a1_val, h_score_2: h2_val, a_score_2: a2_val };
+                const winSide = this.getWinnerStatus(stats);
+                
+                await _supabase.from('results').delete().eq('league_id', this.leagueId)
+                    .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
+
+                const logs = [{ 
+                    home_name: this.scoringMatch.home_team, 
+                    h_score: h1_val, 
+                    away_name: this.scoringMatch.away_team, 
+                    a_score: a1_val, 
+                    league_id: this.leagueId 
+                }];
+                
+                if(this.scoringMatch.round_name !== 'Final') {
+                    logs.push({ 
+                        home_name: this.scoringMatch.away_team, 
+                        h_score: a2_val, 
+                        away_name: this.scoringMatch.home_team, 
+                        a_score: h2_val, 
+                        league_id: this.leagueId 
+                    });
+                }
+                await _supabase.from('results').insert(logs);
+
+                if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
+                    const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
+                    const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
+                    
+                    const field = this.scoringMatch.next_slot === 'home' ? 
+                        { home_team: winnerName, home_logo: winnerLogo } : 
+                        { away_team: winnerName, away_logo: winnerLogo };
+                    
+                    await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
+                }
+
+                this.scoringMatch = null;
+                await this.fetchMatches();
+            }
+        }
+    }
+</script>
+</body>
+</html>
