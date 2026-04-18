@@ -201,7 +201,7 @@
                 this.isAdmin = this.user?.id === this.adminId;
 
                 if (this.user) {
-                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).single();
+                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).maybeSingle();
                     if(ui) {
                         this.userData = ui;
                         this.userTeamName = ui.team_name;
