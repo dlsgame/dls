@@ -14,7 +14,6 @@
         .outfit { font-family: 'Outfit', sans-serif; }
         .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
         
-        /* Skeleton Shimmer Effect */
         .shimmer {
             background: linear-gradient(90deg, #111827 25%, #1a2235 50%, #111827 75%);
             background-size: 200% 100%;
@@ -41,16 +40,16 @@
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <div class="flex flex-col">
                 <h1 class="outfit text-2xl font-900 uppercase tracking-tighter leading-none">DLS<span class="text-[#00ff85]">26</span></h1>
-                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Friendly</p>
+                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Champions League</p>
             </div>
             
-            <div class="flex items-center gap-4">
-                <template x-if="!isJoined && !isAdmin">
+            <div class="flex items-center gap-3">
+                <template x-if="!isAdmin && !isJoined">
                     <button 
                         @click="requestJoin()" 
                         :disabled="joinStatus !== 'Idle'"
-                        class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all"
-                        :class="joinStatus === 'Idle' ? 'bg-[#00ff85] text-black hover:scale-105' : 'bg-white/10 text-white/40 cursor-not-allowed'"
+                        class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shadow-lg"
+                        :class="joinStatus === 'Idle' ? 'bg-[#00ff85] text-black hover:scale-105 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'"
                         x-text="joinStatus === 'Idle' ? 'Request to Join' : joinStatus">
                     </button>
                 </template>
@@ -60,16 +59,9 @@
                         Setup Draw
                     </button>
                 </template>
-                <a href="home.html" 
-                   class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] hover:bg-[#00ff850a] hover:scale-105 transition-all duration-200 flex items-center justify-center backdrop-blur-md border border-white/10 group"
-                   title="Return to Home">
-                    <svg class="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
-                         fill="none" 
-                         stroke="currentColor" 
-                         viewBox="0 0 24 24" 
-                         stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                    </svg>
+
+                <a href="home.html" class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 </a>
             </div>
         </div>
@@ -99,7 +91,8 @@
 
                     <template x-for="match in getMatchesByRound(round)" :key="match.id">
                         <div class="glass-card match-box mb-8" :class="isFinished(match) ? 'match-active' : ''">
-                            <div class="flex justify-between items-center mb-3 p-2 rounded-lg transition-colors" :class="match.home_team === userTeamName ? 'team-highlight' : ''">
+                            <div class="flex justify-between items-center mb-3 p-1.5 rounded-lg transition-all" 
+                                 :class="match.home_team === userTeamName ? 'team-highlight scale-[1.02]' : ''">
                                 <div class="flex items-center gap-3">
                                     <img :src="match.home_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
                                     <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
@@ -107,13 +100,12 @@
                                           x-text="match.home_team || 'TBD'"></span>
                                 </div>
                                 <div class="flex gap-1.5 items-center">
-                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.h_score || 0"></span>
-                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.h_score_2 || 0"></span>
                                     <span class="text-xs font-black outfit text-[#00ff85]" x-text="(match.h_score||0) + (match.h_score_2||0)"></span>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between items-center p-2 rounded-lg transition-colors" :class="match.away_team === userTeamName ? 'team-highlight' : ''">
+                            <div class="flex justify-between items-center p-1.5 rounded-lg transition-all" 
+                                 :class="match.away_team === userTeamName ? 'team-highlight scale-[1.02]' : ''">
                                 <div class="flex items-center gap-3">
                                     <img :src="match.away_logo || 'https://via.placeholder.com/40'" class="w-6 h-6 rounded-full bg-white/5 object-contain">
                                     <span class="text-[11px] font-bold uppercase truncate w-28 text-white/70" 
@@ -121,8 +113,6 @@
                                           x-text="match.away_team || 'TBD'"></span>
                                 </div>
                                 <div class="flex gap-1.5 items-center">
-                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.a_score || 0"></span>
-                                    <span class="text-[9px] text-white/20 font-black" x-show="round !== 'Final'" x-text="match.a_score_2 || 0"></span>
                                     <span class="text-xs font-black outfit text-white/40" x-text="(match.a_score||0) + (match.a_score_2||0)"></span>
                                 </div>
                             </div>
@@ -154,16 +144,15 @@
             </div>
             
             <div class="space-y-4 mb-8">
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 (Score)</p>
+                <div class="bg-white/5 p-4 rounded-2xl">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 Score</p>
                     <div class="flex items-center justify-around">
                         <input type="number" x-model="h1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
                         <input type="number" x-model="a1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
                     </div>
                 </div>
-
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 (Score)</p>
+                <div class="bg-white/5 p-4 rounded-2xl" x-show="scoringMatch?.round_name !== 'Final'">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 Score</p>
                     <div class="flex items-center justify-around">
                         <input type="number" x-model="h2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
                         <input type="number" x-model="a2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
@@ -171,13 +160,13 @@
                 </div>
             </div>
 
-            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px] shadow-lg shadow-[#00ff8520]">Confirm & Update</button>
+            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px]">Update Result</button>
             <button @click="scoringMatch = null" class="w-full py-3 text-white/20 font-bold uppercase text-[9px] mt-2">Cancel</button>
         </div>
     </div>
 
 <script>
-    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+  const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
     function knockoutEngine() {
         return {
@@ -197,24 +186,33 @@
 
             async init() {
                 const { data: { session } } = await _supabase.auth.getSession();
-                this.user = session?.user;
-                this.isAdmin = this.user?.id === this.adminId;
+                if (!session) { window.location.href = 'signin.html'; return; }
+                
+                this.user = session.user;
+                this.isAdmin = (this.user.id === this.adminId);
 
-                if (this.user) {
-                    const { data: ui } = await _supabase.from('userinfo').select('*').eq('id', this.user.id).maybeSingle();
-                    if(ui) {
-                        this.userData = ui;
-                        this.userTeamName = ui.team_name;
-                    }
-                    await this.checkMembership();
+                // Fetch User Details
+                const { data: ui, error: uiErr } = await _supabase
+                    .from('userinfo')
+                    .select('*')
+                    .eq('id', this.user.id)
+                    .maybeSingle();
+
+                if (ui) {
+                    this.userData = ui;
+                    this.userTeamName = ui.team_name;
+                } else if (uiErr) {
+                    console.error("Userinfo Fetch Error:", uiErr.message);
                 }
 
+                await this.checkMembership();
                 await this.fetchMatches();
                 this.loading = false;
             },
 
             async checkMembership() {
-                const { data } = await _supabase
+                if (!this.user) return;
+                const { data, error } = await _supabase
                     .from('league_members')
                     .select('status')
                     .eq('league_id', this.leagueId)
@@ -225,12 +223,19 @@
                     this.joinStatus = data.status;
                     if (data.status === 'Approved') this.isJoined = true;
                 }
+                if (error) console.error("Membership Check Error:", error.message);
             },
 
             async requestJoin() {
-                if (this.joinStatus !== 'Idle' || !this.userData) return;
+                // Safeguard checks
+                if (!this.userData) {
+                    alert("Team Profile not found. Please complete your profile first.");
+                    return;
+                }
+                if (this.joinStatus !== 'Idle') return;
                 
                 this.joinStatus = 'Requesting';
+                
                 const { error } = await _supabase.from('league_members').insert([{
                     user_id: this.user.id,
                     league_id: this.leagueId,
@@ -241,10 +246,12 @@
                 }]);
 
                 if (error) {
+                    console.error("Join Failed:", error.message);
+                    alert("Failed to join: " + error.message);
                     this.joinStatus = 'Idle';
-                    alert("Error joining: " + error.message);
                 } else {
                     this.joinStatus = 'Pending';
+                    alert("Request sent successfully!");
                 }
             },
 
@@ -263,15 +270,8 @@
                 if (bracketData) {
                     this.matches = bracketData.map(match => {
                         if (!match.home_team || !match.away_team) return match;
-
-                        const leg1 = resultsData?.find(r => 
-                            r.home_name === match.home_team && r.away_name === match.away_team
-                        );
-
-                        const leg2 = resultsData?.find(r => 
-                            r.home_name === match.away_team && r.away_name === match.home_team
-                        );
-
+                        const leg1 = resultsData?.find(r => r.home_name === match.home_team && r.away_name === match.away_team);
+                        const leg2 = resultsData?.find(r => r.home_name === match.away_team && r.away_name === match.home_team);
                         return {
                             ...match,
                             h_score: leg1 ? parseFloat(leg1.h_score) : 0,
@@ -280,7 +280,6 @@
                             a_score_2: leg2 ? parseFloat(leg2.a_score) : 0
                         };
                     });
-
                     const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
                     const existing = [...new Set(this.matches.map(m => m.round_name))];
                     this.activeRounds = order.filter(r => existing.includes(r));
@@ -288,17 +287,15 @@
             },
 
             isFinished(m) {
-                return (parseFloat(m.h_score) + parseFloat(m.h_score_2) + parseFloat(m.a_score) + parseFloat(m.a_score_2)) > 0;
+                return ((m.h_score||0) + (m.h_score_2||0) + (m.a_score||0) + (m.a_score_2||0)) > 0;
             },
 
             getWinnerStatus(m) {
                 const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
                 const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
-                
                 if (hTot === 0 && aTot === 0) return null;
                 if (hTot > aTot) return 'home';
                 if (aTot > hTot) return 'away';
-                
                 if (hTot === aTot) {
                     if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
                     if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
@@ -306,35 +303,24 @@
                 return 'draw';
             },
 
-            getMatchesByRound(round) {
-                return this.matches.filter(m => m.round_name === round);
-            },
+            getMatchesByRound(round) { return this.matches.filter(m => m.round_name === round); },
 
             openScoring(match) {
                 this.scoringMatch = match;
-                this.h1 = match.h_score || 0; 
-                this.a1 = match.a_score || 0;
-                this.h2 = match.h_score_2 || 0; 
-                this.a2 = match.a_score_2 || 0;
+                this.h1 = match.h_score; this.a1 = match.a_score;
+                this.h2 = match.h_score_2; this.a2 = match.a_score_2;
             },
 
             async setupTournament() {
-                if(!confirm("Start New Draw? Teams from same leagues will be separated.")) return;
+                if(!confirm("Start New Draw?")) return;
                 this.loading = true;
-
-                const { data: teams } = await _supabase.from('league_members')
-                    .select('team_name, logo_url, previous_league_id')
-                    .eq('league_id', this.leagueId)
-                    .eq('status', 'Approved');
-
-                if (!teams || teams.length < 4) {
-                    this.loading = false;
-                    return alert("Need at least 4 approved teams.");
-                }
+                const { data: teams } = await _supabase.from('league_members').select('*').eq('league_id', this.leagueId).eq('status', 'Approved');
+                if (!teams || teams.length < 2) { this.loading = false; return alert("Need at least 2 approved teams."); }
 
                 await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
                 await _supabase.from('results').delete().eq('league_id', this.leagueId);
 
+                // Simple auto-bracket logic (4, 8, or 16 teams)
                 const rounds = [];
                 if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
                 if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
@@ -357,69 +343,39 @@
                     nextRoundIds = roundMatches;
                 }
 
+                // Initial Shuffle and Fill
                 let pool = [...teams].sort(() => 0.5 - Math.random());
-                let finalPairs = [];
-                while(pool.length > 1) {
-                    let home = pool.shift();
-                    let awayIdx = pool.findIndex(t => t.previous_league_id !== home.previous_league_id);
-                    let away = awayIdx !== -1 ? pool.splice(awayIdx, 1)[0] : pool.shift();
-                    finalPairs.push({ home, away });
-                }
-
                 for (let i = 0; i < nextRoundIds.length; i++) {
-                    if(!finalPairs[i]) break;
+                    if (pool.length < 2) break;
+                    let h = pool.shift(); let a = pool.shift();
                     await _supabase.from('knockouts').update({ 
-                        home_team: finalPairs[i].home.team_name, home_logo: finalPairs[i].home.logo_url, 
-                        away_team: finalPairs[i].away.team_name, away_logo: finalPairs[i].away.logo_url 
+                        home_team: h.team_name, home_logo: h.logo_url, 
+                        away_team: a.team_name, away_logo: a.logo_url 
                     }).eq('id', nextRoundIds[i].id);
                 }
-                
                 await this.fetchMatches();
                 this.loading = false;
             },
 
             async saveScore() {
-                const h1_val = parseInt(this.h1) || 0;
-                const a1_val = parseInt(this.a1) || 0;
-                const h2_val = parseInt(this.h2) || 0;
-                const a2_val = parseInt(this.a2) || 0;
-
-                const stats = { h_score: h1_val, a_score: a1_val, h_score_2: h2_val, a_score_2: a2_val };
+                const stats = { h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2 };
                 const winSide = this.getWinnerStatus(stats);
                 
                 await _supabase.from('results').delete().eq('league_id', this.leagueId)
                     .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
 
-                const logs = [{ 
-                    home_name: this.scoringMatch.home_team, 
-                    h_score: h1_val, 
-                    away_name: this.scoringMatch.away_team, 
-                    a_score: a1_val, 
-                    league_id: this.leagueId 
-                }];
-                
+                const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
                 if(this.scoringMatch.round_name !== 'Final') {
-                    logs.push({ 
-                        home_name: this.scoringMatch.away_team, 
-                        h_score: a2_val, 
-                        away_name: this.scoringMatch.home_team, 
-                        a_score: h2_val, 
-                        league_id: this.leagueId 
-                    });
+                    logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
                 }
                 await _supabase.from('results').insert(logs);
 
                 if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
                     const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
                     const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
-                    
-                    const field = this.scoringMatch.next_slot === 'home' ? 
-                        { home_team: winnerName, home_logo: winnerLogo } : 
-                        { away_team: winnerName, away_logo: winnerLogo };
-                    
+                    const field = this.scoringMatch.next_slot === 'home' ? { home_team: winnerName, home_logo: winnerLogo } : { away_team: winnerName, away_logo: winnerLogo };
                     await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
                 }
-
                 this.scoringMatch = null;
                 await this.fetchMatches();
             }
