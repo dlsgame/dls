@@ -603,4 +603,126 @@
                         };
                     });
                     const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
-                    const existing = [...new Set(this.mat
+                    const existing = [...new Set(this.matches.map(m => m.round_name))];
+                    this.activeRounds = order.filter(r => existing.includes(r));
+                }
+            },
+
+            isFinished(m) {
+                return ((m.h_score||0) + (m.h_score_2||0) + (m.a_score||0) + (m.a_score_2||0)) > 0;
+            },
+
+            getWinnerStatus(m) {
+                const hTot = (parseFloat(m.h_score) || 0) + (parseFloat(m.h_score_2) || 0);
+                const aTot = (parseFloat(m.a_score) || 0) + (parseFloat(m.a_score_2) || 0);
+                if (hTot === 0 && aTot === 0) return null;
+                if (hTot > aTot) return 'home';
+                if (aTot > hTot) return 'away';
+                if (hTot === aTot) {
+                    if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
+                    if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
+                }
+                return 'draw';
+            },
+
+            getMatchesByRound(round) { return this.matches.filter(m => m.round_name === round); },
+
+            getLeftMatches(round) {
+                const all = this.getMatchesByRound(round);
+                return all.slice(0, Math.ceil(all.length / 2));
+            },
+
+            getRightMatches(round) {
+                const all = this.getMatchesByRound(round);
+                return all.slice(Math.ceil(all.length / 2));
+            },
+
+            getChampion() {
+                const finals = this.getMatchesByRound('Final');
+                if (!finals.length) return null;
+                const m = finals[0];
+                const w = this.getWinnerStatus(m);
+                if (w === 'home') return m.home_team;
+                if (w === 'away') return m.away_team;
+                return null;
+            },
+
+            openScoring(match) {
+                this.scoringMatch = match;
+                this.h1 = match.h_score; this.a1 = match.a_score;
+                this.h2 = match.h_score_2; this.a2 = match.a_score_2;
+            },
+
+            async setupTournament() {
+                if(!confirm("Start New Draw?")) return;
+                this.loading = true;
+                const { data: teams } = await _supabase.from('league_members').select('*').eq('league_id', this.leagueId).eq('status', 'Approved');
+                if (!teams || teams.length < 2) { this.loading = false; return alert("Need at least 2 approved teams."); }
+
+                await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
+                await _supabase.from('results').delete().eq('league_id', this.leagueId);
+
+                // Simple auto-bracket logic (4, 8, or 16 teams)
+                const rounds = [];
+                if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
+                if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
+                if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
+                rounds.push({ name: 'Final', m: 1 });
+
+                let nextRoundIds = [];
+                for (let i = rounds.length - 1; i >= 0; i--) {
+                    const r = rounds[i];
+                    const roundMatches = [];
+                    for (let j = 0; j < r.m; j++) {
+                        const obj = { league_id: this.leagueId, round_name: r.name, match_group: j + 1 };
+                        if (nextRoundIds.length > 0) {
+                            obj.winner_next_id = nextRoundIds[Math.floor(j/2)].id;
+                            obj.next_slot = (j % 2 === 0) ? 'home' : 'away';
+                        }
+                        const { data } = await _supabase.from('knockouts').insert([obj]).select().single();
+                        roundMatches.push(data);
+                    }
+                    nextRoundIds = roundMatches;
+                }
+
+                // Initial Shuffle and Fill
+                let pool = [...teams].sort(() => 0.5 - Math.random());
+                for (let i = 0; i < nextRoundIds.length; i++) {
+                    if (pool.length < 2) break;
+                    let h = pool.shift(); let a = pool.shift();
+                    await _supabase.from('knockouts').update({ 
+                        home_team: h.team_name, home_logo: h.logo_url, 
+                        away_team: a.team_name, away_logo: a.logo_url 
+                    }).eq('id', nextRoundIds[i].id);
+                }
+                await this.fetchMatches();
+                this.loading = false;
+            },
+
+            async saveScore() {
+                const stats = { h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2 };
+                const winSide = this.getWinnerStatus(stats);
+                
+                await _supabase.from('results').delete().eq('league_id', this.leagueId)
+                    .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
+
+                const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
+                if(this.scoringMatch.round_name !== 'Final') {
+                    logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
+                }
+                await _supabase.from('results').insert(logs);
+
+                if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
+                    const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
+                    const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
+                    const field = this.scoringMatch.next_slot === 'home' ? { home_team: winnerName, home_logo: winnerLogo } : { away_team: winnerName, away_logo: winnerLogo };
+                    await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
+                }
+                this.scoringMatch = null;
+                await this.fetchMatches();
+            }
+        }
+    }
+</script>
+</body>
+</html>
