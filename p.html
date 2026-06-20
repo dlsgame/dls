@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLS26 | Champions League</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
+        .outfit { font-family: 'Outfit', sans-serif; }
+        .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
+        
+        .shimmer {
+            background: linear-gradient(90deg, #111827 25%, #1a2235 50%, #111827 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* ── FC MOBILE MIRROR BRACKET ── */
+        .bracket-page { padding: 24px 16px 100px; }
+
+        .mirror-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0 16px;
+            align-items: center;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* Each side stacks its rounds vertically */
+        .bracket-side { display: flex; flex-direction: column; gap: 24px; }
+
+        /* Round group inside a side */
+        .round-group { display: flex; flex-direction: column; gap: 12px; }
+        .round-label {
+            text-align: center;
+            font-size: 9px; font-weight: 900;
+            letter-spacing: 0.35em; text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 4px;
+        }
+
+        /* Individual match card */
+        .match-box {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: border-color 0.3s;
+        }
+        .match-box.match-active { border-color: rgba(0,255,133,0.25); }
+
+        /* Team row inside match */
+        .team-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px;
+            background: linear-gradient(160deg, #111827 0%, #0d1321 100%);
+            transition: background 0.2s;
+            cursor: default;
+        }
+        .team-row:first-child { border-radius: 14px 14px 0 0; }
+        .team-row:last-child  { border-radius: 0 0 14px 14px; }
+        .team-row-divider { height: 1px; background: rgba(255,255,255,0.04); }
+        .team-row.winner-row { background: linear-gradient(90deg, rgba(0,255,133,0.18) 0%, rgba(0,255,133,0.04) 100%); }
+        .team-row.my-team    { background: rgba(0,255,133,0.1); border: 1px solid rgba(0,255,133,0.3); }
+
+        .team-logo-wrap {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .team-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+        .team-name-text {
+            flex: 1; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.03em;
+            color: rgba(255,255,255,0.6);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .team-name-text.winner-text { color: #00ff85 !important; font-weight: 900; }
+
+        .team-score {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px; font-weight: 900;
+            color: #00ff85;
+            min-width: 18px; text-align: center;
+        }
+        .team-score.score-dim { color: rgba(255,255,255,0.3); }
+
+        /* Right side mirrors logo/name order */
+        .bracket-side.right-side .team-row { flex-direction: row-reverse; }
+        .bracket-side.right-side .team-name-text { text-align: right; }
+
+        /* Admin edit button */
+        .edit-btn {
+            position: absolute; top: -10px; right: -10px;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #00ff85; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,255,133,0.4);
+            transition: transform 0.2s;
+            z-index: 10;
+        }
+        .edit-btn:hover { transform: scale(1.15); }
+
+        /* ── CENTRE COLUMN ── */
+        .centre-col {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 12px;
+            padding: 0 8px;
+        }
+        .trophy-wrap { position: relative; text-align: center; }
+        .trophy-glow {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 100px; height: 100px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,255,133,0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .trophy-emoji { font-size: 60px; filter: drop-shadow(0 0 18px rgba(0,255,133,0.5)); }
+        .final-badge {
+            background: #00ff85; color: #000;
+            font-size: 9px; font-weight: 900;
+            letter-spacing: 0.3em; text-transform: uppercase;
+            padding: 4px 14px; border-radius: 20px;
+        }
+
+        /* ── FINAL MATCH (centre) ── */
+        .final-match-wrap { width: 100%; max-width: 220px; margin-top: 8px; }
+
+        /* ── CHAMPION BANNER ── */
+        .champion-banner {
+            text-align: center; margin-bottom: 24px;
+        }
+        .champion-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px; font-weight: 900;
+            color: #00ff85; letter-spacing: 3px; text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(0,255,133,0.5);
+            animation: pulse-green 2s ease-in-out infinite;
+        }
+        .champion-name { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.7); letter-spacing: 2px; margin-top: 2px; }
+        @keyframes pulse-green {
+            0%,100% { text-shadow: 0 0 20px rgba(0,255,133,0.4); }
+            50%      { text-shadow: 0 0 50px rgba(0,255,133,0.9); }
+        }
+
+        /* ── STAGE TABS ── */
+        .stage-tabs {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; padding: 14px 20px 0; overflow-x: auto;
+        }
+        .stage-tab {
+            font-size: 10px; font-weight: 900; letter-spacing: 0.3em;
+            text-transform: uppercase; color: rgba(255,255,255,0.25);
+            white-space: nowrap; padding: 0 8px; cursor: default;
+        }
+        .stage-tab.active { color: #fff; }
+        .stage-tab.final-tab { color: #00ff85; }
+        .stage-arrow { color: #00ff85; font-size: 12px; padding: 0 2px; opacity: 0.5; }
+
+        /* Shimmer loading */
+        .bracket-loading { padding: 40px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="knockoutEngine()" x-init="init()">
+
+    <header class="bg-[#0a0f1a]/80 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex flex-col">
+                <h1 class="outfit text-2xl font-900 uppercase tracking-tighter leading-none">DLS<span class="text-[#00ff85]">26</span></h1>
+                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Champions League</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <template x-if="!isAdmin && !isJoined">
+                    <button 
+                        @click="requestJoin()" 
+                        :disabled="joinStatus !== 'Idle'"
+                        class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shadow-lg"
+                        :class="joinStatus === 'Idle' ? 'bg-[#00ff85] text-black hover:scale-105 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'"
+                        x-text="joinStatus === 'Idle' ? 'Request to Join' : joinStatus">
+                    </button>
+                </template>
+
+                <template x-if="isAdmin">
+                    <button @click="setupTournament()" class="bg-[#00ff85] text-black text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-widest hover:scale-105 transition-all">
+                        Setup Draw
+                    </button>
+                </template>
+
+                <a href="home.html" class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- STAGE TABS -->
+        <div class="stage-tabs" x-show="!loading" x-cloak>
+            <template x-for="(round, i) in activeRounds" :key="round">
+                <span class="flex items-center">
+                    <span x-show="i > 0" class="stage-arrow">›</span>
+                    <span class="stage-tab"
+                          :class="round === 'Final' ? 'final-tab' : (i === 0 ? 'active' : '')"
+                          x-text="round"></span>
+                </span>
+            </template>
+        </div>
+
+        <!-- LOADING SHIMMER -->
+        <div x-show="loading" class="bracket-loading">
+            <template x-for="i in 6">
+                <div class="glass-card p-4 rounded-2xl opacity-30">
+                    <div class="h-4 w-full shimmer rounded mb-3"></div>
+                    <div class="h-4 w-3/4 shimmer rounded"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- MIRROR BRACKET -->
+        <div class="bracket-page" x-show="!loading" x-cloak>
+
+            <!-- CHAMPION BANNER -->
+            <template x-if="getChampion()">
+                <div class="champion-banner">
+                    <div class="champion-label">🏆 Champion</div>
+                    <div class="champion-name" x-text="getChampion()"></div>
+                </div>
+            </template>
+
+            <div class="mirror-grid">
+
+                <!-- ── LEFT SIDE ── -->
+                <div class="bracket-side left-side">
+                    <!-- R16 Left -->
+                    <template x-if="getLeftMatches('Round of 16').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Round of 16</div>
+                            <template x-for="match in getLeftMatches('Round of 16')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- QTR Left -->
+                    <template x-if="getLeftMatches('Quarter-Finals').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Quarter-Finals</div>
+                            <template x-for="match in getLeftMatches('Quarter-Finals')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- SEMI Left -->
+                    <template x-if="getLeftMatches('Semi-Finals').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Semi-Finals</div>
+                            <template x-for="match in getLeftMatches('Semi-Finals')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- ── CENTRE TROPHY + FINAL ── -->
+                <div class="centre-col">
+                    <div class="trophy-wrap">
+                        <div class="trophy-glow"></div>
+                        <div class="trophy-emoji">🏆</div>
+                    </div>
+                    <div class="final-badge">Final</div>
+
+                    <template x-if="getMatchesByRound('Final').length > 0">
+                        <div class="final-match-wrap">
+                            <template x-for="match in getMatchesByRound('Final')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? (match.h_score||0) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? (match.a_score||0) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- ── RIGHT SIDE ── -->
+                <div class="bracket-side right-side">
+                    <!-- R16 Right -->
+                    <template x-if="getRightMatches('Round of 16').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Round of 16</div>
+                            <template x-for="match in getRightMatches('Round of 16')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- QTR Right -->
+                    <template x-if="getRightMatches('Quarter-Finals').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Quarter-Finals</div>
+                            <template x-for="match in getRightMatches('Quarter-Finals')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- SEMI Right -->
+                    <template x-if="getRightMatches('Semi-Finals').length > 0">
+                        <div class="round-group">
+                            <div class="round-label">Semi-Finals</div>
+                            <template x-for="match in getRightMatches('Semi-Finals')" :key="match.id">
+                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
+                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <div class="team-row-divider"></div>
+                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
+                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
+                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
+                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                                    </div>
+                                    <template x-if="isAdmin && match.home_team && match.away_team">
+                                        <button @click="openScoring(match)" class="edit-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+            </div><!-- end mirror-grid -->
+        </div><!-- end bracket-page -->
+    </main>
+
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80" x-cloak x-transition>
+        <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border-[#00ff8540]">
+            <div class="flex justify-between items-center mb-8">
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.home_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.home_team"></p>
+                </div>
+                <div class="px-4 outfit font-900 text-[#00ff85] italic">VS</div>
+                <div class="text-center flex-1">
+                    <img :src="scoringMatch?.away_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
+                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.away_team"></p>
+                </div>
+            </div>
+            
+            <div class="space-y-4 mb-8">
+                <div class="bg-white/5 p-4 rounded-2xl">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 Score</p>
+                    <div class="flex items-center justify-around">
+                        <input type="number" x-model="h1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                    </div>
+                </div>
+                <div class="bg-white/5 p-4 rounded-2xl" x-show="scoringMatch?.round_name !== 'Final'">
+                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 Score</p>
+                    <div class="flex items-center justify-around">
+                        <input type="number" x-model="h2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model="a2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                    </div>
+                </div>
+            </div>
+
+            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px]">Update Result</button>
+            <button @click="scoringMatch = null" class="w-full py-3 text-white/20 font-bold uppercase text-[9px] mt-2">Cancel</button>
+        </div>
+    </div>
+
+<script>
+  const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+
+    function knockoutEngine() {
+        return {
+            loading: true,
+            leagueId: new URLSearchParams(window.location.search).get('id'),
+            isAdmin: false,
+            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+            user: null,
+            userData: null,
+            userTeamName: '',
+            isJoined: false,
+            joinStatus: 'Idle',
+            matches: [],
+            activeRounds: [],
+            scoringMatch: null,
+            h1: 0, a1: 0, h2: 0, a2: 0,
+
+            async init() {
+                const { data: { session } } = await _supabase.auth.getSession();
+                if (!session) { window.location.href = 'signin.html'; return; }
+                
+                this.user = session.user;
+                this.isAdmin = (this.user.id === this.adminId);
+
+                // Fetch User Details
+                const { data: ui, error: uiErr } = await _supabase
+                    .from('userinfo')
+                    .select('*')
+                    .eq('id', this.user.id)
+                    .maybeSingle();
+
+                if (ui) {
+                    this.userData = ui;
+                    this.userTeamName = ui.team_name;
+                } else if (uiErr) {
+                    console.error("Userinfo Fetch Error:", uiErr.message);
+                }
+
+                await this.checkMembership();
+                await this.fetchMatches();
+                this.loading = false;
+            },
+
+            async checkMembership() {
+                if (!this.user) return;
+                const { data, error } = await _supabase
+                    .from('league_members')
+                    .select('status')
+                    .eq('league_id', this.leagueId)
+                    .eq('user_id', this.user.id)
+                    .maybeSingle();
+
+                if (data) {
+                    this.joinStatus = data.status;
+                    if (data.status === 'Approved') this.isJoined = true;
+                }
+                if (error) console.error("Membership Check Error:", error.message);
+            },
+
+            async requestJoin() {
+                // Safeguard checks
+                if (!this.userData) {
+                    alert("Team Profile not found. Please complete your profile first.");
+                    return;
+                }
+                if (this.joinStatus !== 'Idle') return;
+                
+                this.joinStatus = 'Requesting';
+                
+                const { error } = await _supabase.from('league_members').insert([{
+                    user_id: this.user.id,
+                    league_id: this.leagueId,
+                    team_name: this.userData.team_name,
+                    logo_url: this.userData.logo_url,
+                    email: this.user.email,
+                    status: 'Pending'
+                }]);
+
+                if (error) {
+                    console.error("Join Failed:", error.message);
+                    alert("Failed to join: " + error.message);
+                    this.joinStatus = 'Idle';
+                } else {
+                    this.joinStatus = 'Pending';
+                    alert("Request sent successfully!");
+                }
+            },
+
+            async fetchMatches() {
+                const { data: bracketData } = await _supabase
+                    .from('knockouts')
+                    .select('*')
+                    .eq('league_id', this.leagueId)
+                    .order('match_group', { ascending: true });
+
+                const { data: resultsData } = await _supabase
+                    .from('results')
+                    .select('*')
+                    .eq('league_id', this.leagueId);
+
+                if (bracketData) {
+                    this.matches = bracketData.map(match => {
+                        if (!match.home_team || !match.away_team) return match;
+                        const leg1 = resultsData?.find(r => r.home_name === match.home_team && r.away_name === match.away_team);
+                        const leg2 = resultsData?.find(r => r.home_name === match.away_team && r.away_name === match.home_team);
+                        return {
+                            ...match,
+                            h_score: leg1 ? parseFloat(leg1.h_score) : 0,
+                            a_score: leg1 ? parseFloat(leg1.a_score) : 0,
+                            h_score_2: leg2 ? parseFloat(leg2.h_score) : 0, 
+                            a_score_2: leg2 ? parseFloat(leg2.a_score) : 0
+                        };
+                    });
+                    const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
+                    const existing = [...new Set(this.mat
