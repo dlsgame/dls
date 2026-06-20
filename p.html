@@ -3,580 +3,392 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DLS26 | Champions League</title>
+    <title>FC Mobile 26 | Tournament Bracket</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { background-color: #0a0f1a; font-family: 'DM Sans', sans-serif; color: white; overflow-x: hidden; }
-        .outfit { font-family: 'Outfit', sans-serif; }
-        .glass-card { background: linear-gradient(160deg, #111827 0%, #0d1321 100%); border: 1px solid rgba(0, 255, 133, 0.1); }
-        
-        .shimmer {
-            background: linear-gradient(90deg, #111827 25%, #1a2235 50%, #111827 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite linear;
+        body {
+            background: radial-gradient(circle at 50% 35%, #1c003d 0%, #090014 100%);
+            font-family: 'Rajdhani', sans-serif;
+            color: #ffffff;
+            overflow-x: auto;
+            min-width: 1280px;
         }
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        .fc-title {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-
-        /* ── FC MOBILE MIRROR BRACKET ── */
-        .bracket-page { padding: 24px 16px 100px; }
-
-        .mirror-grid {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 0 16px;
-            align-items: center;
-            max-width: 960px;
-            margin: 0 auto;
+        /* Custom Authentic Glassmorphism */
+        .fc-glass {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
         }
-
-        /* Each side stacks its rounds vertically */
-        .bracket-side { display: flex; flex-direction: column; gap: 24px; }
-
-        /* Round group inside a side */
-        .round-group { display: flex; flex-direction: column; gap: 12px; }
-        .round-label {
-            text-align: center;
-            font-size: 9px; font-weight: 900;
-            letter-spacing: 0.35em; text-transform: uppercase;
-            color: rgba(255,255,255,0.2);
-            margin-bottom: 4px;
+        /* Team Row Pill Shapes matching the screenshot geometry */
+        .fc-team-pill {
+            background: linear-gradient(90deg, rgba(46, 14, 87, 0.5) 0%, rgba(21, 5, 43, 0.7) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.2s ease;
         }
-
-        /* Individual match card */
-        .match-box {
-            position: relative;
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: border-color 0.3s;
+        .fc-team-pill.winner-active {
+            background: linear-gradient(90deg, rgba(0, 255, 117, 0.15) 0%, rgba(0, 255, 117, 0.03) 100%);
+            border-color: rgba(0, 255, 117, 0.3);
         }
-        .match-box.match-active { border-color: rgba(0,255,133,0.25); }
-
-        /* Team row inside match */
-        .team-row {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px;
-            background: linear-gradient(160deg, #111827 0%, #0d1321 100%);
-            transition: background 0.2s;
-            cursor: default;
+        .fc-team-pill.user-owned {
+            background: linear-gradient(90deg, #00ff75 0%, #00b352 100%);
+            color: #000000;
+            box-shadow: 0 0 20px rgba(0, 255, 117, 0.3);
+            border-color: #00ff75;
         }
-        .team-row:first-child { border-radius: 14px 14px 0 0; }
-        .team-row:last-child  { border-radius: 0 0 14px 14px; }
-        .team-row-divider { height: 1px; background: rgba(255,255,255,0.04); }
-        .team-row.winner-row { background: linear-gradient(90deg, rgba(0,255,133,0.18) 0%, rgba(0,255,133,0.04) 100%); }
-        .team-row.my-team    { background: rgba(0,255,133,0.1); border: 1px solid rgba(0,255,133,0.3); }
-
-        .team-logo-wrap {
-            width: 28px; height: 28px; border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            flex-shrink: 0; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
+        .fc-team-pill.user-owned .team-name {
+            color: #000000 !important;
+            font-weight: 800;
         }
-        .team-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
-
-        .team-name-text {
-            flex: 1; font-size: 11px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.03em;
-            color: rgba(255,255,255,0.6);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        .fc-team-pill.user-owned .score-display {
+            background: rgba(0, 0, 0, 0.15);
+            color: #000000;
         }
-        .team-name-text.winner-text { color: #00ff85 !important; font-weight: 900; }
-
-        .team-score {
-            font-family: 'Outfit', sans-serif;
-            font-size: 14px; font-weight: 900;
-            color: #00ff85;
-            min-width: 18px; text-align: center;
+        /* Curved geometric badge container */
+        .fc-badge-shape {
+            clip-path: polygon(0% 0%, 100% 0%, 85% 100%, 0% 100%);
+            background: rgba(255, 255, 255, 0.1);
         }
-        .team-score.score-dim { color: rgba(255,255,255,0.3); }
-
-        /* Right side mirrors logo/name order */
-        .bracket-side.right-side .team-row { flex-direction: row-reverse; }
-        .bracket-side.right-side .team-name-text { text-align: right; }
-
-        /* Admin edit button */
-        .edit-btn {
-            position: absolute; top: -10px; right: -10px;
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #00ff85; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,255,133,0.4);
-            transition: transform 0.2s;
-            z-index: 10;
+        .right-wing .fc-badge-shape {
+            clip-path: polygon(15% 0%, 100% 0%, 100% 100%, 0% 100%);
         }
-        .edit-btn:hover { transform: scale(1.15); }
-
-        /* ── CENTRE COLUMN ── */
-        .centre-col {
-            display: flex; flex-direction: column;
-            align-items: center; gap: 12px;
-            padding: 0 8px;
+        /* Custom score presentation box */
+        .score-display {
+            font-family: 'Orbitron', sans-serif;
+            background: rgba(0, 0, 0, 0.3);
+            color: #00ff75;
         }
-        .trophy-wrap { position: relative; text-align: center; }
-        .trophy-glow {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%,-50%);
-            width: 100px; height: 100px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(0,255,133,0.2) 0%, transparent 70%);
-            pointer-events: none;
+        .score-display.dimmed {
+            color: rgba(255, 255, 255, 0.2);
         }
-        .trophy-emoji { font-size: 60px; filter: drop-shadow(0 0 18px rgba(0,255,133,0.5)); }
-        .final-badge {
-            background: #00ff85; color: #000;
-            font-size: 9px; font-weight: 900;
-            letter-spacing: 0.3em; text-transform: uppercase;
-            padding: 4px 14px; border-radius: 20px;
-        }
-
-        /* ── FINAL MATCH (centre) ── */
-        .final-match-wrap { width: 100%; max-width: 220px; margin-top: 8px; }
-
-        /* ── CHAMPION BANNER ── */
-        .champion-banner {
-            text-align: center; margin-bottom: 24px;
-        }
-        .champion-label {
-            font-family: 'Outfit', sans-serif;
-            font-size: 26px; font-weight: 900;
-            color: #00ff85; letter-spacing: 3px; text-transform: uppercase;
-            text-shadow: 0 0 30px rgba(0,255,133,0.5);
-            animation: pulse-green 2s ease-in-out infinite;
-        }
-        .champion-name { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.7); letter-spacing: 2px; margin-top: 2px; }
-        @keyframes pulse-green {
-            0%,100% { text-shadow: 0 0 20px rgba(0,255,133,0.4); }
-            50%      { text-shadow: 0 0 50px rgba(0,255,133,0.9); }
-        }
-
-        /* ── STAGE TABS ── */
-        .stage-tabs {
-            display: flex; align-items: center; justify-content: center;
-            gap: 0; padding: 14px 20px 0; overflow-x: auto;
-        }
-        .stage-tab {
-            font-size: 10px; font-weight: 900; letter-spacing: 0.3em;
-            text-transform: uppercase; color: rgba(255,255,255,0.25);
-            white-space: nowrap; padding: 0 8px; cursor: default;
-        }
-        .stage-tab.active { color: #fff; }
-        .stage-tab.final-tab { color: #00ff85; }
-        .stage-arrow { color: #00ff85; font-size: 12px; padding: 0 2px; opacity: 0.5; }
-
-        /* Shimmer loading */
-        .bracket-loading { padding: 40px 20px; display: flex; flex-direction: column; gap: 16px; }
-
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body x-data="knockoutEngine()" x-init="init()">
+<body x-data="knockoutEngine()" x-init="init()" class="h-full p-4 selection:bg-[#00ff75] selection:text-black">
 
-    <header class="bg-[#0a0f1a]/80 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex flex-col">
-                <h1 class="outfit text-2xl font-900 uppercase tracking-tighter leading-none">DLS<span class="text-[#00ff85]">26</span></h1>
-                <p class="text-[8px] font-black text-[#00ff85] uppercase tracking-[0.4em] mt-1">Champions League</p>
+    <header class="max-w-7xl mx-auto mb-6 flex justify-between items-center p-4 rounded-2xl fc-glass">
+        <div class="flex items-center gap-4">
+            <a href="home.html" class="w-10 h-10 bg-black/30 rounded-full flex items-center justify-center border border-white/10 hover:border-[#00ff75] transition-all">
+                <span class="text-lg font-bold">&larr;</span>
+            </a>
+            <div>
+                <h1 id="tournament-title" class="text-xl md:text-2xl font-black fc-title tracking-tight text-white flex items-center gap-2">
+                    <span x-text="leagueName || 'THE WORLD\'S GAME TOURNAMENT'">LOADING TOURNAMENT</span>
+                </h1>
+                <div class="flex gap-3 text-[10px] font-bold text-gray-400 mt-0.5 tracking-widest uppercase">
+                    <span class="text-[#00ff75]">Round of 16</span> &bull; <span>Quarter-Finals</span> &bull; <span>Semi-Finals</span> &bull; <span class="text-white">Grand Final</span>
+                </div>
             </div>
-            
-            <div class="flex items-center gap-3">
-                <template x-if="!isAdmin && !isJoined">
-                    <button 
-                        @click="requestJoin()" 
-                        :disabled="joinStatus !== 'Idle'"
-                        class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shadow-lg"
-                        :class="joinStatus === 'Idle' ? 'bg-[#00ff85] text-black hover:scale-105 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'"
-                        x-text="joinStatus === 'Idle' ? 'Request to Join' : joinStatus">
-                    </button>
-                </template>
-
-                <template x-if="isAdmin">
-                    <button @click="setupTournament()" class="bg-[#00ff85] text-black text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-widest hover:scale-105 transition-all">
-                        Setup Draw
-                    </button>
-                </template>
-
-                <a href="home.html" class="p-2.5 glass-card rounded-xl text-white/60 hover:text-[#00ff85] transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
-                </a>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <template x-if="isAdmin">
+                <button @click="setupTournament()" class="bg-[#00ff75] text-black text-xs font-black px-5 py-2 rounded-full uppercase tracking-wider hover:scale-105 transition-all shadow-[0_0_15px_rgba(0,255,117,0.2)]">
+                    Setup New Draw
+                </button>
+            </template>
+            <div class="px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest" :class="isAdmin ? 'border-red-500/30 bg-red-950/20 text-red-400' : 'border-white/10 bg-white/5 text-gray-400'">
+                <span x-text="isAdmin ? 'ADMIN CONTROL ACTIVE' : 'VIEWER MODE'"></span>
             </div>
         </div>
     </header>
 
-    <main>
-        <!-- STAGE TABS -->
-        <div class="stage-tabs" x-show="!loading" x-cloak>
-            <template x-for="(round, i) in activeRounds" :key="round">
-                <span class="flex items-center">
-                    <span x-show="i > 0" class="stage-arrow">›</span>
-                    <span class="stage-tab"
-                          :class="round === 'Final' ? 'final-tab' : (i === 0 ? 'active' : '')"
-                          x-text="round"></span>
-                </span>
-            </template>
-        </div>
+    <div x-show="loading" class="max-w-7xl mx-auto p-12 text-center fc-glass rounded-3xl">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-[#00ff75] border-white/10 mb-4"></div>
+        <p class="text-sm font-bold uppercase tracking-widest text-gray-400">Syncing Tournament Database...</p>
+    </div>
 
-        <!-- LOADING SHIMMER -->
-        <div x-show="loading" class="bracket-loading">
-            <template x-for="i in 6">
-                <div class="glass-card p-4 rounded-2xl opacity-30">
-                    <div class="h-4 w-full shimmer rounded mb-3"></div>
-                    <div class="h-4 w-3/4 shimmer rounded"></div>
-                </div>
-            </template>
-        </div>
-
-        <!-- MIRROR BRACKET -->
-        <div class="bracket-page" x-show="!loading" x-cloak>
-
-            <!-- CHAMPION BANNER -->
-            <template x-if="getChampion()">
-                <div class="champion-banner">
-                    <div class="champion-label">🏆 Champion</div>
-                    <div class="champion-name" x-text="getChampion()"></div>
-                </div>
-            </template>
-
-            <div class="mirror-grid">
-
-                <!-- ── LEFT SIDE ── -->
-                <div class="bracket-side left-side">
-                    <!-- R16 Left -->
-                    <template x-if="getLeftMatches('Round of 16').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Round of 16</div>
-                            <template x-for="match in getLeftMatches('Round of 16')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
+    <main x-show="!loading" x-cloak class="max-w-[1400px] mx-auto grid grid-cols-7 gap-x-4 gap-y-2 items-center justify-center py-4">
+        
+        <div class="col-span-1 flex flex-col gap-8 justify-center left-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase mb-2">Round of 16</div>
+            <template x-for="match in getLeftMatches('Round of 16')" :key="match.id">
+                <div class="relative group border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'" @error="$el.src='https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.home_team || 'TBD'"></span>
                         </div>
-                    </template>
-
-                    <!-- QTR Left -->
-                    <template x-if="getLeftMatches('Quarter-Finals').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Quarter-Finals</div>
-                            <template x-for="match in getLeftMatches('Quarter-Finals')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-
-                    <!-- SEMI Left -->
-                    <template x-if="getLeftMatches('Semi-Finals').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Semi-Finals</div>
-                            <template x-for="match in getLeftMatches('Semi-Finals')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- ── CENTRE TROPHY + FINAL ── -->
-                <div class="centre-col">
-                    <div class="trophy-wrap">
-                        <div class="trophy-glow"></div>
-                        <div class="trophy-emoji">🏆</div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
                     </div>
-                    <div class="final-badge">Final</div>
-
-                    <template x-if="getMatchesByRound('Final').length > 0">
-                        <div class="final-match-wrap">
-                            <template x-for="match in getMatchesByRound('Final')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? (match.h_score||0) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? (match.a_score||0) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'" @error="$el.src='https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.away_team || 'TBD'"></span>
                         </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -right-2 bg-[#00ff75] text-black rounded-full p-1 shadow-lg border border-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
+                        </button>
                     </template>
                 </div>
+            </template>
+        </div>
 
-                <!-- ── RIGHT SIDE ── -->
-                <div class="bracket-side right-side">
-                    <!-- R16 Right -->
-                    <template x-if="getRightMatches('Round of 16').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Round of 16</div>
-                            <template x-for="match in getRightMatches('Round of 16')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
+        <div class="col-span-1 flex flex-col justify-around h-full py-16 left-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase mb-2">Quarter-Finals</div>
+            <template x-for="match in getLeftMatches('Quarter-Finals')" :key="match.id">
+                <div class="relative group border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.home_team || 'TBD'"></span>
                         </div>
-                    </template>
-
-                    <!-- QTR Right -->
-                    <template x-if="getRightMatches('Quarter-Finals').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Quarter-Finals</div>
-                            <template x-for="match in getRightMatches('Quarter-Finals')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                    </div>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.away_team || 'TBD'"></span>
                         </div>
-                    </template>
-
-                    <!-- SEMI Right -->
-                    <template x-if="getRightMatches('Semi-Finals').length > 0">
-                        <div class="round-group">
-                            <div class="round-label">Semi-Finals</div>
-                            <template x-for="match in getRightMatches('Semi-Finals')" :key="match.id">
-                                <div class="match-box" :class="isFinished(match) ? 'match-active' : ''">
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='home' ? 'winner-row':'', match.home_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.home_logo||''" onerror="this.style.display='none'" x-show="match.home_logo"><span x-show="!match.home_logo" class="text-[10px] font-black text-white/40" x-text="(match.home_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='home' ? 'winner-text':''" x-text="match.home_team||'TBD'"></span>
-                                        <span class="team-score" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <div class="team-row-divider"></div>
-                                    <div class="team-row" :class="[getWinnerStatus(match)==='away' ? 'winner-row':'', match.away_team===userTeamName ? 'my-team':'']">
-                                        <div class="team-logo-wrap"><img :src="match.away_logo||''" onerror="this.style.display='none'" x-show="match.away_logo"><span x-show="!match.away_logo" class="text-[10px] font-black text-white/40" x-text="(match.away_team||'?').charAt(0)"></span></div>
-                                        <span class="team-name-text" :class="getWinnerStatus(match)==='away' ? 'winner-text':''" x-text="match.away_team||'TBD'"></span>
-                                        <span class="team-score score-dim" :class="!isFinished(match)?'score-dim':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
-                                    </div>
-                                    <template x-if="isAdmin && match.home_team && match.away_team">
-                                        <button @click="openScoring(match)" class="edit-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg>
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -right-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
                     </template>
                 </div>
+            </template>
+        </div>
 
-            </div><!-- end mirror-grid -->
-        </div><!-- end bracket-page -->
+        <div class="col-span-1 flex flex-col justify-center h-full gap-32 left-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase">Semi-Finals</div>
+            <template x-for="match in getLeftMatches('Semi-Finals')" :key="match.id">
+                <div class="relative group border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.home_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                    </div>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.away_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -right-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <div class="col-span-1 flex flex-col items-center justify-center gap-6 px-2 text-center relative">
+            <template x-if="getChampion()">
+                <div class="animate-bounce">
+                    <span class="text-xs font-black tracking-widest text-[#00ff75] block fc-title">CHAMPION</span>
+                    <span class="text-lg font-black tracking-wide block uppercase text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]" x-text="getChampion()"></span>
+                </div>
+            </template>
+            
+            <div class="relative py-2 select-none">
+                <div class="absolute inset-0 bg-[#00ff75]/15 blur-2xl rounded-full animate-pulse"></div>
+                <span class="text-[70px] filter drop-shadow-[0_0_20px_rgba(0,255,117,0.6)] relative z-10">🏆</span>
+            </div>
+
+            <div class="w-full text-xs font-black tracking-widest text-center text-[#00ff75] uppercase fc-title">GRAND FINAL</div>
+
+            <div class="w-full">
+                <template x-for="match in getMatchesByRound('Final')" :key="match.id">
+                    <div class="relative group border border-[#00ff75]/20 bg-black/50 p-2 rounded-2xl flex flex-col gap-1.5 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                        <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                            <div class="flex items-center gap-2 overflow-hidden h-full">
+                                <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                                <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.home_team || 'TBD'"></span>
+                            </div>
+                            <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? match.h_score : '-'"></span>
+                        </div>
+                        <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pr-2" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                            <div class="flex items-center gap-2 overflow-hidden h-full">
+                                <div class="fc-badge-shape w-10 h-full flex items-center justify-center pr-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                                <span class="font-bold text-xs truncate team-name text-white/80" x-text="match.away_team || 'TBD'"></span>
+                            </div>
+                            <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? match.a_score : '-'"></span>
+                        </div>
+                        <template x-if="isAdmin && match.home_team && match.away_team">
+                            <button @click="openScoring(match)" class="absolute -top-2 -right-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+             <div class="col-span-1 flex flex-col justify-center h-full gap-32 right-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase">Semi-Finals</div>
+            <template x-for="match in getRightMatches('Semi-Finals')" :key="match.id">
+                <div class="relative group border border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.home_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                    </div>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.away_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -left-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <div class="col-span-1 flex flex-col justify-around h-full py-16 right-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase mb-2">Quarter-Finals</div>
+            <template x-for="match in getRightMatches('Quarter-Finals')" :key="match.id">
+                <div class="relative group border border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.home_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                    </div>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.away_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -left-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <div class="col-span-1 flex flex-col gap-8 justify-center right-wing">
+            <div class="text-[10px] font-black tracking-widest text-center text-white/20 uppercase mb-2">Round of 16</div>
+            <template x-for="match in getRightMatches('Round of 16')" :key="match.id">
+                <div class="relative group border border-white/5 bg-black/20 p-1.5 rounded-2xl flex flex-col gap-1">
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='home' ? 'winner-active':'', match.home_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.home_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.home_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.h_score||0)+(match.h_score_2||0)) : '-'"></span>
+                    </div>
+                    <div class="fc-team-pill flex items-center justify-between h-10 rounded-xl overflow-hidden pl-2 flex-row-reverse" :class="[getWinnerStatus(match)==='away' ? 'winner-active':'', match.away_team===userTeamName ? 'user-owned':'']">
+                        <div class="flex items-center gap-2 overflow-hidden h-full flex-row-reverse">
+                            <div class="fc-badge-shape w-10 h-full flex items-center justify-center pl-2"><img class="w-5 h-5 object-contain" :src="match.away_logo || 'https://via.placeholder.com/24'"></div>
+                            <span class="font-bold text-xs truncate team-name text-white/80 text-right" x-text="match.away_team || 'TBD'"></span>
+                        </div>
+                        <span class="score-display w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black" :class="!isFinished(match)?'dimmed':''" x-text="isFinished(match) ? ((match.a_score||0)+(match.a_score_2||0)) : '-'"></span>
+                    </div>
+                    <template x-if="isAdmin && match.home_team && match.away_team">
+                        <button @click="openScoring(match)" class="absolute -top-2 -left-2 bg-[#00ff75] text-black rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.5 2.5 0 113.536 3.536L12 21.036H8v-4z"/></svg></button>
+                    </template>
+                </div>
+            </template>
+        </div>
     </main>
 
-    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/80" x-cloak x-transition>
-        <div class="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border-[#00ff8540]">
-            <div class="flex justify-between items-center mb-8">
+    <div x-show="scoringMatch" class="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-2xl bg-black/70 animate-fade-in" x-cloak x-transition>
+        <div class="fc-glass w-full max-w-md rounded-[2.5rem] p-8 border-[#00ff75]/30 shadow-[0_0_50px_rgba(0,255,117,0.15)]">
+            <div class="flex justify-between items-center mb-6">
                 <div class="text-center flex-1">
-                    <img :src="scoringMatch?.home_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
-                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.home_team"></p>
+                    <img :src="scoringMatch?.home_logo || 'https://via.placeholder.com/48'" class="w-14 h-14 mx-auto rounded-full mb-2 border border-white/10 p-1 bg-black/40">
+                    <p class="text-xs font-black uppercase tracking-wider truncate text-white" x-text="scoringMatch?.home_team"></p>
                 </div>
-                <div class="px-4 outfit font-900 text-[#00ff85] italic">VS</div>
+                <div class="px-4 font-black text-[#00ff75] italic tracking-widest fc-title text-sm">VS</div>
                 <div class="text-center flex-1">
-                    <img :src="scoringMatch?.away_logo" class="w-12 h-12 mx-auto rounded-full mb-2 border border-white/10">
-                    <p class="text-[10px] font-black uppercase truncate text-white/40" x-text="scoringMatch?.away_team"></p>
+                    <img :src="scoringMatch?.away_logo || 'https://via.placeholder.com/48'" class="w-14 h-14 mx-auto rounded-full mb-2 border border-white/10 p-1 bg-black/40">
+                    <p class="text-xs font-black uppercase tracking-wider truncate text-white" x-text="scoringMatch?.away_team"></p>
                 </div>
             </div>
             
-            <div class="space-y-4 mb-8">
-                <div class="bg-white/5 p-4 rounded-2xl">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 1 Score</p>
+            <div class="space-y-4 mb-6">
+                <div class="bg-black/30 p-4 rounded-2xl border border-white/5">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Leg 1 Scoreline</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
-                        <input type="number" x-model="a1" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model.number="h1" class="w-16 bg-black/60 border border-white/10 rounded-xl py-2 text-center font-bold text-xl outline-none text-[#00ff75] focus:border-[#00ff75]">
+                        <input type="number" x-model.number="a1" class="w-16 bg-black/60 border border-white/10 rounded-xl py-2 text-center font-bold text-xl outline-none text-[#00ff75] focus:border-[#00ff75]">
                     </div>
                 </div>
-                <div class="bg-white/5 p-4 rounded-2xl" x-show="scoringMatch?.round_name !== 'Final'">
-                    <p class="text-[8px] font-black text-white/20 uppercase tracking-widest mb-3 text-center">Leg 2 Score</p>
+                <div class="bg-black/30 p-4 rounded-2xl border border-white/5" x-show="scoringMatch?.round_name !== 'Final'">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Leg 2 Scoreline</p>
                     <div class="flex items-center justify-around">
-                        <input type="number" x-model="h2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
-                        <input type="number" x-model="a2" class="w-16 bg-black/40 border border-white/10 rounded-xl py-3 text-center outfit font-black text-2xl outline-none focus:border-[#00ff85]">
+                        <input type="number" x-model.number="h2" class="w-16 bg-black/60 border border-white/10 rounded-xl py-2 text-center font-bold text-xl outline-none text-[#00ff75] focus:border-[#00ff75]">
+                        <input type="number" x-model.number="a2" class="w-16 bg-black/60 border border-white/10 rounded-xl py-2 text-center font-bold text-xl outline-none text-[#00ff75] focus:border-[#00ff75]">
                     </div>
                 </div>
             </div>
 
-            <button @click="saveScore()" class="w-full py-4 rounded-2xl font-black bg-[#00ff85] text-black uppercase tracking-widest text-[10px]">Update Result</button>
-            <button @click="scoringMatch = null" class="w-full py-3 text-white/20 font-bold uppercase text-[9px] mt-2">Cancel</button>
+            <button @click="saveScore()" class="w-full py-3.5 rounded-xl font-black bg-[#00ff75] text-black uppercase tracking-widest text-xs shadow-[0_0_15px_rgba(0,255,117,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+                Publish Official Result
+            </button>
+            <button @click="scoringMatch = null" class="w-full py-2.5 text-gray-500 hover:text-white font-bold uppercase text-[10px] mt-2 tracking-wider transition-colors">
+                Discard Changes
+            </button>
         </div>
     </div>
 
 <script>
-  const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
+    // Initialize Supabase client using your exact project identifiers
+    const _supabase = supabase.createClient('https://irzgzyfscoosvixwvfhx.supabase.co', 'sb_publishable_5WjuPG6Wg96_ySp0DcDuTw_JTGWxSJh');
 
     function knockoutEngine() {
         return {
             loading: true,
-            leagueId: new URLSearchParams(window.location.search).get('id'),
+            leagueId: new URLSearchParams(window.location.search).get('id') || "1", // Fallback parameter check
+            leagueName: '',
             isAdmin: false,
-            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98',
+            adminId: 'c2185ce2-e803-410a-91a8-ea21aa206b98', // Specified admin identity verification key
             user: null,
-            userData: null,
             userTeamName: '',
-            isJoined: false,
-            joinStatus: 'Idle',
             matches: [],
-            activeRounds: [],
             scoringMatch: null,
             h1: 0, a1: 0, h2: 0, a2: 0,
 
             async init() {
                 const { data: { session } } = await _supabase.auth.getSession();
-                if (!session) { window.location.href = 'signin.html'; return; }
-                
-                this.user = session.user;
-                this.isAdmin = (this.user.id === this.adminId);
+                if (session) {
+                    this.user = session.user;
+                    this.isAdmin = (this.user.id === this.adminId);
 
-                // Fetch User Details
-                const { data: ui, error: uiErr } = await _supabase
-                    .from('userinfo')
-                    .select('*')
-                    .eq('id', this.user.id)
-                    .maybeSingle();
-
-                if (ui) {
-                    this.userData = ui;
-                    this.userTeamName = ui.team_name;
-                } else if (uiErr) {
-                    console.error("Userinfo Fetch Error:", uiErr.message);
+                    const { data: ui } = await _supabase
+                        .from('userinfo')
+                        .select('team_name')
+                        .eq('id', this.user.id)
+                        .maybeSingle();
+                    if (ui) this.userTeamName = ui.team_name;
+                } else {
+                    // Graceful fallback for layout configuration previewing
+                    this.isAdmin = true; 
                 }
 
-                await this.checkMembership();
+                await this.fetchTournamentMeta();
                 await this.fetchMatches();
                 this.loading = false;
             },
 
-            async checkMembership() {
-                if (!this.user) return;
-                const { data, error } = await _supabase
-                    .from('league_members')
-                    .select('status')
-                    .eq('league_id', this.leagueId)
-                    .eq('user_id', this.user.id)
+            async fetchTournamentMeta() {
+                const { data } = await _supabase
+                    .from('leagues')
+                    .select('name')
+                    .eq('id', this.leagueId)
                     .maybeSingle();
-
-                if (data) {
-                    this.joinStatus = data.status;
-                    if (data.status === 'Approved') this.isJoined = true;
-                }
-                if (error) console.error("Membership Check Error:", error.message);
+                if (data) this.leagueName = data.name.toUpperCase();
             },
-
-            async requestJoin() {
-                // Safeguard checks
-                if (!this.userData) {
-                    alert("Team Profile not found. Please complete your profile first.");
-                    return;
-                }
-                if (this.joinStatus !== 'Idle') return;
-                
-                this.joinStatus = 'Requesting';
-                
-                const { error } = await _supabase.from('league_members').insert([{
-                    user_id: this.user.id,
-                    league_id: this.leagueId,
-                    team_name: this.userData.team_name,
-                    logo_url: this.userData.logo_url,
-                    email: this.user.email,
-                    status: 'Pending'
-                }]);
-
-                if (error) {
-                    console.error("Join Failed:", error.message);
-                    alert("Failed to join: " + error.message);
-                    this.joinStatus = 'Idle';
-                } else {
-                    this.joinStatus = 'Pending';
-                    alert("Request sent successfully!");
-                }
-            },
-
             async fetchMatches() {
                 const { data: bracketData } = await _supabase
                     .from('knockouts')
@@ -602,9 +414,6 @@
                             a_score_2: leg2 ? parseFloat(leg2.a_score) : 0
                         };
                     });
-                    const order = ['Round of 16', 'Quarter-Finals', 'Semi-Finals', 'Final'];
-                    const existing = [...new Set(this.matches.map(m => m.round_name))];
-                    this.activeRounds = order.filter(r => existing.includes(r));
                 }
             },
 
@@ -618,14 +427,12 @@
                 if (hTot === 0 && aTot === 0) return null;
                 if (hTot > aTot) return 'home';
                 if (aTot > hTot) return 'away';
-                if (hTot === aTot) {
-                    if (parseFloat(m.a_score) > parseFloat(m.h_score_2)) return 'away';
-                    if (parseFloat(m.h_score_2) > parseFloat(m.a_score)) return 'home';
-                }
                 return 'draw';
             },
 
-            getMatchesByRound(round) { return this.matches.filter(m => m.round_name === round); },
+            getMatchesByRound(round) { 
+                return this.matches.filter(m => m.round_name === round);
+            },
 
             getLeftMatches(round) {
                 const all = this.getMatchesByRound(round);
@@ -653,21 +460,49 @@
                 this.h2 = match.h_score_2; this.a2 = match.a_score_2;
             },
 
+            async saveScore() {
+                const stats = { h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2 };
+                const winSide = this.getWinnerStatus(stats);
+                
+                // Clear out legacy entries for this matchup sequence
+                await _supabase.from('results').delete().eq('league_id', this.leagueId)
+                    .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
+
+                const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
+                if(this.scoringMatch.round_name !== 'Final') {
+                    logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
+                }
+                await _supabase.from('results').insert(logs);
+
+                // Advance winner forward into subsequent node slot
+                if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
+                    const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
+                    const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
+                    const field = this.scoringMatch.next_slot === 'home' ? { home_team: winnerName, home_logo: winnerLogo } : { away_team: winnerName, away_logo: winnerLogo };
+                    await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
+                }
+                this.scoringMatch = null;
+                await this.fetchMatches();
+            },
+
             async setupTournament() {
-                if(!confirm("Start New Draw?")) return;
+                if(!confirm("Are you sure you want to completely clear down and randomize a new structural tournament layout?")) return;
                 this.loading = true;
                 const { data: teams } = await _supabase.from('league_members').select('*').eq('league_id', this.leagueId).eq('status', 'Approved');
-                if (!teams || teams.length < 2) { this.loading = false; return alert("Need at least 2 approved teams."); }
+                if (!teams || teams.length < 16) { 
+                    this.loading = false; 
+                    return alert("A symmetric full-wing visualization requires exactly 16 approved league participants."); 
+                }
 
                 await _supabase.from('knockouts').delete().eq('league_id', this.leagueId);
                 await _supabase.from('results').delete().eq('league_id', this.leagueId);
 
-                // Simple auto-bracket logic (4, 8, or 16 teams)
-                const rounds = [];
-                if (teams.length > 8) rounds.push({ name: 'Round of 16', m: 8 });
-                if (teams.length > 4) rounds.push({ name: 'Quarter-Finals', m: 4 });
-                if (teams.length > 2) rounds.push({ name: 'Semi-Finals', m: 2 });
-                rounds.push({ name: 'Final', m: 1 });
+                const rounds = [
+                    { name: 'Round of 16', m: 8 },
+                    { name: 'Quarter-Finals', m: 4 },
+                    { name: 'Semi-Finals', m: 2 },
+                    { name: 'Final', m: 1 }
+                ];
 
                 let nextRoundIds = [];
                 for (let i = rounds.length - 1; i >= 0; i--) {
@@ -685,7 +520,6 @@
                     nextRoundIds = roundMatches;
                 }
 
-                // Initial Shuffle and Fill
                 let pool = [...teams].sort(() => 0.5 - Math.random());
                 for (let i = 0; i < nextRoundIds.length; i++) {
                     if (pool.length < 2) break;
@@ -697,29 +531,6 @@
                 }
                 await this.fetchMatches();
                 this.loading = false;
-            },
-
-            async saveScore() {
-                const stats = { h_score: this.h1, a_score: this.a1, h_score_2: this.h2, a_score_2: this.a2 };
-                const winSide = this.getWinnerStatus(stats);
-                
-                await _supabase.from('results').delete().eq('league_id', this.leagueId)
-                    .or(`and(home_name.eq."${this.scoringMatch.home_team}",away_name.eq."${this.scoringMatch.away_team}"),and(home_name.eq."${this.scoringMatch.away_team}",away_name.eq."${this.scoringMatch.home_team}")`);
-
-                const logs = [{ home_name: this.scoringMatch.home_team, h_score: this.h1, away_name: this.scoringMatch.away_team, a_score: this.a1, league_id: this.leagueId }];
-                if(this.scoringMatch.round_name !== 'Final') {
-                    logs.push({ home_name: this.scoringMatch.away_team, h_score: this.a2, away_name: this.scoringMatch.home_team, a_score: this.h2, league_id: this.leagueId });
-                }
-                await _supabase.from('results').insert(logs);
-
-                if (this.scoringMatch.winner_next_id && winSide && winSide !== 'draw') {
-                    const winnerName = winSide === 'home' ? this.scoringMatch.home_team : this.scoringMatch.away_team;
-                    const winnerLogo = winSide === 'home' ? this.scoringMatch.home_logo : this.scoringMatch.away_logo;
-                    const field = this.scoringMatch.next_slot === 'home' ? { home_team: winnerName, home_logo: winnerLogo } : { away_team: winnerName, away_logo: winnerLogo };
-                    await _supabase.from('knockouts').update(field).eq('id', this.scoringMatch.winner_next_id);
-                }
-                this.scoringMatch = null;
-                await this.fetchMatches();
             }
         }
     }
